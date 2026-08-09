@@ -1,0 +1,38 @@
+export const progressActivities = [
+  {
+    id: 1,
+    type: "Lecture completed",
+    title: "Introduction to Web Architecture",
+    subject: "Web Technology",
+    date: "Today",
+    description: "Completed the first lecture in Web Technology.",
+    path: "/student/subjects",
+  },
+  {
+    id: 2,
+    type: "Quiz completed",
+    title: "SE checkpoint quiz",
+    subject: "Software Engineering",
+    date: "Yesterday",
+    description: "Scored 88% on the module quiz.",
+    path: "/student/progress",
+  },
+  {
+    id: 3,
+    type: "Flashcards reviewed",
+    title: "Data Mining key terms",
+    subject: "Data Mining",
+    date: "2 days ago",
+    description: "Reviewed 16 flashcards for exam prep.",
+    path: "/student/subjects",
+  },
+  {
+    id: 4,
+    type: "Subject progress updated",
+    title: "Software Engineering",
+    subject: "Software Engineering",
+    date: "3 days ago",
+    description: "Progress moved to 76% complete.",
+    path: "/student/subjects",
+  },
+];

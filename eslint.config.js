@@ -1,0 +1,1 @@
+The file `/lect-ai-frontend/eslint.config.js` is intentionally left blank.
