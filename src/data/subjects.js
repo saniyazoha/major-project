@@ -23,4 +23,10 @@ export const subjects = [
     code: "DM",
     description: "Data Mining subject",
   },
+  {
+    id: "5",
+    name: "Computer Science 301",
+    code: "CS301",
+    description: "Neural networks and machine learning",
+  },
 ];

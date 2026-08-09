@@ -25,7 +25,7 @@ import FacultySettings from "../pages/faculty/FacultySettings";
 
 import StudentDashboard from "../pages/student/StudentDashboard";
 import StudentSubjects from "../pages/student/StudentSubjects";
-import StudentSubjectDetails from "../pages/student/StudentSubjectDetails";
+import SubjectLectures from "../pages/student/SubjectLectures";
 import StudentLectureDetails from "../pages/student/StudentLectureDetails";
 
 import StudentTranscript from "../pages/student/StudentTranscript";
@@ -189,39 +189,63 @@ function AppRoutes() {
         <Route path="subjects" element={<StudentSubjects />} />
 
         {/* /student/subjects/:subjectId */}
-        <Route path="subjects/:subjectId" element={<StudentSubjectDetails />} />
+        <Route path="subjects/:subjectId" element={<SubjectLectures />} />
 
         {/* =========================
             STUDENT LECTURES
         ========================= */}
 
-        {/* /student/lectures/:id */}
-        <Route path="lectures/:id" element={<StudentLectureDetails />} />
+        {/* /student/lectures/:lectureId */}
+        <Route path="lectures/:lectureId" element={<StudentLectureDetails />} />
 
         {/* =========================
             STUDENT LECTURE RESOURCES
         ========================= */}
 
-        {/* /student/lectures/:id/transcript */}
-        <Route path="lectures/:id/transcript" element={<StudentTranscript />} />
-
-        {/* /student/lectures/:id/summary */}
-        <Route path="lectures/:id/summary" element={<StudentSummary />} />
-
-        {/* /student/lectures/:id/key-concepts */}
+        {/* /student/lectures/:lectureId/transcript */}
         <Route
-          path="lectures/:id/key-concepts"
+          path="lectures/:lectureId/transcript"
+          element={<StudentTranscript />}
+        />
+
+        {/* /student/lectures/:lectureId/summary */}
+        <Route
+          path="lectures/:lectureId/summary"
+          element={<StudentSummary />}
+        />
+
+        {/* /student/lectures/:lectureId/key-concepts */}
+        <Route
+          path="lectures/:lectureId/key-concepts"
           element={<StudentKeyConcepts />}
         />
 
-        {/* /student/lectures/:id/flashcards */}
-        <Route path="lectures/:id/flashcards" element={<StudentFlashcards />} />
+        {/* /student/lectures/:lectureId/flashcards */}
+        <Route
+          path="lectures/:lectureId/flashcards"
+          element={<StudentFlashcards />}
+        />
 
-        {/* /student/lectures/:id/quiz */}
-        <Route path="lectures/:id/quiz" element={<StudentQuiz />} />
+        {/* /student/lectures/:lectureId/quiz */}
+        <Route path="lectures/:lectureId/quiz" element={<StudentQuiz />} />
 
-        {/* /student/lectures/:id/qa */}
-        <Route path="lectures/:id/qa" element={<StudentQA />} />
+        {/* /student/lectures/:lectureId/qa */}
+        <Route path="lectures/:lectureId/qa" element={<StudentQA />} />
+
+        {/* ======================================================
+            STUDENT SUBJECT → LECTURERS → LECTURES
+            Example:
+            /student/subjects/:subjectId/lecturers
+            /student/subjects/:subjectId/lecturers/:lecturerId
+        ====================================================== */}
+        <Route
+          path="subjects/:subjectId/lecturers"
+          element={<SubjectLectures />}
+        />
+        <Route
+          path="subjects/:subjectId/lecturers/:lecturerId"
+          element={<SubjectLectures />}
+        />
 
         {/* =========================
             STUDENT PROGRESS

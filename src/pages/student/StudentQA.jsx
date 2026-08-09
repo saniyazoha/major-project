@@ -1,184 +1,148 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, Send, Sparkles, User } from "lucide-react";
-import { lectures } from "../../data/lectures";
+import React, { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { lectureData } from "../data/lectureData";
+import "../styles/LectureResources.css";
 
-function StudentQA() {
-  const { id } = useParams();
+export default function QAPage() {
+  const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find((item) => item.id === Number(id));
+  const lecture = lectureData[lectureId] || lectureData["lecture-04"];
 
   const [question, setQuestion] = useState("");
 
   const [messages, setMessages] = useState([
     {
       type: "ai",
-      text: `Hello! I'm ready to answer questions about ${lecture?.title || "this lecture"}. What would you like to know?`,
-    },
-    {
-      type: "user",
-      text: "Can you explain the main concepts covered in this lecture?",
-    },
-    {
-      type: "ai",
-      text: "Based on the lecture content, the main concepts are introduced through the explanations and examples discussed during the session. Review the transcript and summary for the complete context.",
-      reference: "Referenced from this lecture's transcript",
+      text: `Hello! I'm ready to answer questions about ${lecture.title}. What would you like to know?`,
     },
   ]);
 
-  if (!lecture) {
-    return (
-      <div className="page student-page">
-        <button
-          className="back-button"
-          onClick={() => navigate("/student/subjects")}
-        >
-          <ArrowLeft size={15} />
-          Back to Subjects
-        </button>
+  const askQuestion = () => {
+    if (!question.trim()) return;
 
-        <div className="card student-resource-empty">
-          <h3>Lecture not found</h3>
-          <p>The requested lecture does not exist.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const handleSend = () => {
-    const trimmedQuestion = question.trim();
-
-    if (!trimmedQuestion) return;
+    const userQuestion = question;
 
     setMessages((previous) => [
       ...previous,
       {
         type: "user",
-        text: trimmedQuestion,
+        text: userQuestion,
       },
       {
         type: "ai",
-        text: "I can answer questions based on this lecture's available learning content. AI-generated responses will be connected to the lecture transcript when the backend AI service is integrated.",
-        reference: "Based on this lecture's content",
+        text:
+          `Based strictly on the lecture transcript, ` +
+          `the answer to your question is related to ` +
+          `the concepts discussed in this lecture. ` +
+          `Please refer to the relevant transcript section ` +
+          `for the detailed explanation.`,
       },
     ]);
 
     setQuestion("");
   };
 
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      handleSend();
-    }
-  };
-
   return (
-    <div className="page student-page student-qa-page">
-      {/* Back */}
-      <button
-        className="back-button"
-        onClick={() => navigate(`/student/lectures/${lecture.id}`)}
-      >
-        <ArrowLeft size={15} />
-        Back to Lecture
-      </button>
+    <div className="resource-page">
+      <ResourceSidebar navigate={navigate} />
 
-      {/* Lecture Header */}
-      <section className="student-qa-header">
-        <div className="student-qa-header-main">
-          <div className="student-qa-header-icon">
-            <BookOpen size={20} />
-          </div>
+      <main className="resource-main qa-main">
+        <ResourceHeader />
 
-          <div>
-            <p className="eyebrow">{lecture.subject}</p>
+        <button
+          className="back-link"
+          onClick={() => navigate(`/student/lectures/${lectureId}`)}
+        >
+          ← Back to Lecture
+        </button>
 
-            <h1>{lecture.title} Q&A</h1>
+        <div className="qa-page-header">
+          <span>{lecture.code}: INTRODUCTION TO COMPUTER SCIENCE</span>
 
-            <p className="muted">
-              Ask questions about this lecture and get answers based on its
-              learning content.
-            </p>
-          </div>
-        </div>
-      </section>
+          <h1>{lecture.shortTitle}</h1>
 
-      {/* Chat */}
-      <section className="student-qa-chat card">
-        <div className="student-qa-chat-notice">
-          <Sparkles size={14} />
-          Answers are based strictly on this lecture's content.
+          <p>ⓘ Answers are based strictly on this lecture's content.</p>
         </div>
 
-        <div className="student-qa-messages">
+        <div className="qa-messages">
           {messages.map((message, index) => (
-            <div
-              className={`student-chat-row ${
-                message.type === "user"
-                  ? "student-chat-row-user"
-                  : "student-chat-row-ai"
-              }`}
-              key={index}
-            >
-              {message.type === "ai" && (
-                <div className="student-chat-avatar ai-avatar">
-                  <Sparkles size={15} />
-                </div>
-              )}
+            <div key={index} className={`qa-message-row ${message.type}`}>
+              {message.type === "ai" && <div className="ai-avatar">✦</div>}
 
-              <div
-                className={`student-chat-bubble ${
-                  message.type === "user"
-                    ? "student-chat-user"
-                    : "student-chat-ai"
-                }`}
-              >
-                <p>{message.text}</p>
+              <div className="qa-message">
+                {message.text}
 
-                {message.reference && (
-                  <div className="student-chat-reference">
-                    <BookOpen size={12} />
-                    {message.reference}
-                  </div>
+                {message.type === "ai" && index > 0 && (
+                  <small>▣ Referenced from lecture transcript</small>
                 )}
               </div>
 
-              {message.type === "user" && (
-                <div className="student-chat-avatar user-avatar">
-                  <User size={15} />
-                </div>
-              )}
+              {message.type === "user" && <div className="user-avatar">A</div>}
             </div>
           ))}
         </div>
 
-        {/* Question Input */}
-        <div className="student-qa-input-area">
-          <div className="student-qa-input">
-            <input
-              type="text"
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question about this lecture..."
-            />
+        <div className="qa-input-area">
+          <input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                askQuestion();
+              }
+            }}
+            placeholder="Ask a question about this lecture..."
+          />
 
-            <button
-              type="button"
-              className="student-qa-send"
-              onClick={handleSend}
-              disabled={!question.trim()}
-              aria-label="Send question"
-            >
-              <Send size={16} />
-            </button>
-          </div>
+          <button onClick={askQuestion}>➤</button>
         </div>
-      </section>
+      </main>
     </div>
   );
 }
 
-export default StudentQA;
+function ResourceSidebar({ navigate }) {
+  return (
+    <aside className="resource-sidebar">
+      <div className="resource-brand">
+        <div className="resource-logo">✦</div>
+
+        <div>
+          <h2>LectaAI</h2>
+          <span>Academic Portal</span>
+        </div>
+      </div>
+
+      <nav className="resource-nav">
+        <button onClick={() => navigate("/dashboard")}>
+          ▦ &nbsp; Dashboard
+        </button>
+
+        <button className="active" onClick={() => navigate("/subjects")}>
+          ▣ &nbsp; Subjects
+        </button>
+
+        <button onClick={() => navigate("/settings")}>⚙ &nbsp; Settings</button>
+      </nav>
+
+      <button className="resource-upload" onClick={() => navigate("/upload")}>
+        ↑ Upload Lecture
+      </button>
+    </aside>
+  );
+}
+
+function ResourceHeader() {
+  return (
+    <header className="resource-header">
+      <input className="resource-search" placeholder="Search..." />
+
+      <div className="resource-header-icons">
+        <span>♧</span>
+        <span>?</span>
+        <div className="resource-profile">A</div>
+      </div>
+    </header>
+  );
+}

@@ -4,10 +4,51 @@ import { ArrowLeft, BookOpen, Clock, User } from "lucide-react";
 import { lectures } from "../../data/lectures";
 
 function StudentLectureDetails() {
-  const { id } = useParams();
+  const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find((item) => item.id === Number(id));
+  const lecture = lectures.find((item) => item.id === Number(lectureId));
+
+  const resumeAudio = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+
+      o.type = "sine";
+      o.frequency.value = 440;
+
+      o.connect(g);
+      g.connect(ctx.destination);
+
+      o.start();
+      g.gain.setValueAtTime(0.001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.1, ctx.currentTime + 0.1);
+
+      setTimeout(() => {
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        o.stop();
+        ctx.close();
+      }, 800);
+    } catch (e) {
+      alert("Audio demo not supported in this browser.");
+    }
+  };
+
+  const downloadPdf = () => {
+    const content = `${lecture.title}\n\n${lecture.date} • ${lecture.duration}\n\nSummary:\n${lecture.title}`;
+
+    const blob = new Blob([content], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${lecture.title}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   /* =========================================================
      LECTURE NOT FOUND
@@ -55,7 +96,9 @@ function StudentLectureDetails() {
           </div>
 
           <div>
-            <p className="eyebrow">{lecture.subject}</p>
+            <p className="eyebrow">
+              {lecture.subject || "Computer Science 301"}
+            </p>
 
             <h2>{lecture.title}</h2>
 
@@ -71,6 +114,16 @@ function StudentLectureDetails() {
               </span>
 
               <span>{lecture.date}</span>
+            </div>
+
+            <div className="student-lecture-actions">
+              <button className="primary-button" onClick={resumeAudio}>
+                ▶ Resume Audio
+              </button>
+
+              <button className="secondary-button" onClick={downloadPdf}>
+                ↓ Download PDF
+              </button>
             </div>
           </div>
         </div>

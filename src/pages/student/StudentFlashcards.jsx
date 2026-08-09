@@ -1,196 +1,167 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, Layers3 } from "lucide-react";
-import { lectures } from "../../data/lectures";
+import React, { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { lectureData } from "../data/lectureData";
+import "../styles/LectureResources.css";
 
-function StudentFlashcards() {
-  const { id } = useParams();
+export default function FlashcardsPage() {
+  const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find((item) => item.id === Number(id));
+  const lecture = lectureData[lectureId] || lectureData["lecture-04"];
 
-  if (!lecture) {
-    return (
-      <div className="page student-page">
-        <button
-          className="back-button"
-          onClick={() => navigate("/student/subjects")}
-        >
-          <ArrowLeft size={15} />
-          Back to Subjects
-        </button>
+  const [current, setCurrent] = useState(0);
+  const [flipped, setFlipped] = useState(false);
 
-        <div className="card student-resource-empty">
-          <h3>Lecture not found</h3>
-          <p>The requested lecture does not exist.</p>
-        </div>
-      </div>
-    );
-  }
+  const card = lecture.flashcards[current];
 
-  const flashcards = [
-    {
-      question: "What is the main topic of this lecture?",
-      answer:
-        "The lecture introduces the main concepts and principles related to the topic being studied.",
-    },
-    {
-      question: "Why is this topic important?",
-      answer:
-        "Understanding this topic provides an important foundation for learning more advanced concepts in the subject.",
-    },
-    {
-      question: "What are the key ideas to remember?",
-      answer:
-        "Students should focus on the fundamental definitions, principles, relationships, and practical applications discussed during the lecture.",
-    },
-    {
-      question: "How can the concepts be applied?",
-      answer:
-        "The concepts can be applied when solving practical problems and understanding related topics within the subject.",
-    },
-    {
-      question: "What should students revise?",
-      answer:
-        "Students should revise the important concepts, explanations, examples, and conclusions presented during the lecture.",
-    },
-    {
-      question: "What is the main takeaway?",
-      answer:
-        "The main takeaway is to understand the core ideas rather than only memorizing individual definitions.",
-    },
-  ];
+  const next = () => {
+    if (current < lecture.flashcards.length - 1) {
+      setCurrent(current + 1);
+      setFlipped(false);
+    }
+  };
+
+  const previous = () => {
+    if (current > 0) {
+      setCurrent(current - 1);
+      setFlipped(false);
+    }
+  };
 
   return (
-    <div className="page student-page">
-      {/* Back */}
-      <button
-        className="back-button"
-        onClick={() => navigate(`/student/lectures/${lecture.id}`)}
-      >
-        <ArrowLeft size={15} />
-        Back to Lecture
-      </button>
+    <div className="resource-page">
+      <ResourceSidebar navigate={navigate} />
 
-      {/* Lecture Header */}
-      <section className="card student-lecture-info-card">
-        <div className="student-lecture-info-main">
-          <div className="student-lecture-large-icon">
-            <BookOpen size={24} />
-          </div>
+      <main className="resource-main">
+        <ResourceHeader />
 
-          <div>
-            <p className="eyebrow">{lecture.subject}</p>
-
-            <h2>{lecture.title}</h2>
-
-            <div className="student-lecture-info-meta">
-              <span>{lecture.lecturer}</span>
-              <span>{lecture.duration}</span>
-              <span>{lecture.date}</span>
-            </div>
-          </div>
-        </div>
-
-        <span className={`lecture-status ${lecture.status.toLowerCase()}`}>
-          {lecture.status}
-        </span>
-      </section>
-
-      {/* Learning Resources */}
-      <section style={{ marginTop: 28 }}>
-        <div className="student-material-header">
-          <div>
-            <p className="eyebrow">Learning Resources</p>
-
-            <h2>Flashcards</h2>
-
-            <p className="muted">
-              Use these questions and answers to revise the lecture.
-            </p>
-          </div>
-        </div>
-
-        {/* Resource Tabs */}
-        <div className="student-material-tabs">
+        <div className="flashcards-content">
           <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
+            className="back-link"
+            onClick={() => navigate(`/student/lectures/${lectureId}`)}
           >
-            <BookOpen size={15} />
-            Overview
+            ← Back to Lecture
           </button>
 
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/transcript`)
-            }
-          >
-            Transcript
-          </button>
+          <div className="flashcard-heading">
+            <div>
+              <div className="resource-meta">
+                <span className="badge">{lecture.code}</span>
 
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/summary`)}
-          >
-            Summary
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/key-concepts`)
-            }
-          >
-            Key Concepts
-          </button>
-
-          <button className="student-material-tab active">
-            <Layers3 size={15} />
-            Flashcards
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/quiz`)}
-          >
-            Quiz
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
-          >
-            Q&A
-          </button>
-        </div>
-
-        {/* Flashcards */}
-        <div className="student-flashcard-grid">
-          {flashcards.map((flashcard, index) => (
-            <div className="card student-flashcard" key={index}>
-              <div className="student-flashcard-number">{index + 1}</div>
-
-              <h3>{flashcard.question}</h3>
-
-              <div className="student-flashcard-answer">
-                <span>ANSWER</span>
-
-                <p>{flashcard.answer}</p>
+                <span>Module 2</span>
               </div>
-            </div>
-          ))}
-        </div>
 
-        {/* Info */}
-        <div className="student-transcript-note">
-          These are sample flashcards for the frontend. The actual AI-generated
-          flashcards will be populated when the backend and AI processing
-          pipeline are connected.
+              <h1>{lecture.shortTitle}</h1>
+            </div>
+
+            <span>
+              Card {current + 1} of {lecture.flashcards.length}
+            </span>
+          </div>
+
+          <div className="flashcard-progress">
+            <div
+              style={{
+                width: `${((current + 1) / lecture.flashcards.length) * 100}%`,
+              }}
+            />
+          </div>
+
+          <div className="large-flashcard" onClick={() => setFlipped(!flipped)}>
+            <div>
+              <span className="flashcard-label">
+                {flipped ? "ANSWER" : "QUESTION"}
+              </span>
+
+              <h2>{flipped ? card.answer : card.question}</h2>
+
+              {!flipped && <p>Click the card to reveal answer</p>}
+            </div>
+          </div>
+
+          <div className="difficulty-row">
+            <button onClick={() => next()}>
+              <strong>Again</strong>
+              <small>&lt; 1m</small>
+            </button>
+
+            <button onClick={() => next()}>
+              <strong>Hard</strong>
+              <small>6m</small>
+            </button>
+
+            <button onClick={() => next()}>
+              <strong>Good</strong>
+              <small>10m</small>
+            </button>
+
+            <button onClick={() => next()}>
+              <strong>Easy</strong>
+              <small>4d</small>
+            </button>
+          </div>
+
+          <div className="flashcard-navigation">
+            <button onClick={previous} disabled={current === 0}>
+              ← Previous
+            </button>
+
+            <button className="shuffle-button">⤨</button>
+
+            <button
+              onClick={next}
+              disabled={current === lecture.flashcards.length - 1}
+            >
+              Next →
+            </button>
+          </div>
         </div>
-      </section>
+      </main>
     </div>
   );
 }
 
-export default StudentFlashcards;
+function ResourceSidebar({ navigate }) {
+  return (
+    <aside className="resource-sidebar">
+      <div className="resource-brand">
+        <div className="resource-logo">L</div>
+
+        <div>
+          <h2>LectaAI</h2>
+          <span>Academic Portal</span>
+        </div>
+      </div>
+
+      <nav className="resource-nav">
+        <button onClick={() => navigate("/dashboard")}>
+          ▦ &nbsp; Dashboard
+        </button>
+
+        <button className="active" onClick={() => navigate("/subjects")}>
+          ▣ &nbsp; Subjects
+        </button>
+
+        <button onClick={() => navigate("/settings")}>⚙ &nbsp; Settings</button>
+      </nav>
+
+      <button className="resource-upload" onClick={() => navigate("/upload")}>
+        ↑ Upload Lecture
+      </button>
+    </aside>
+  );
+}
+
+function ResourceHeader() {
+  return (
+    <header className="resource-header">
+      <input className="resource-search" placeholder="Search..." />
+
+      <div className="resource-header-icons">
+        <span>♧</span>
+        <span>?</span>
+        <div className="resource-profile">A</div>
+      </div>
+    </header>
+  );
+}

@@ -1,171 +1,172 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, BookOpen } from "lucide-react";
-import { lectures } from "../../data/lectures";
+import React from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { lectureData } from "../data/lectureData";
+import "../styles/LectureResources.css";
 
-function StudentSummary() {
-  const { id } = useParams();
+export default function SummaryPage() {
+  const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find((item) => item.id === Number(id));
+  const lecture = lectureData[lectureId] || lectureData["lecture-04"];
 
-  if (!lecture) {
-    return (
-      <div className="page student-page">
-        <button
-          className="back-button"
-          onClick={() => navigate("/student/subjects")}
-        >
-          <ArrowLeft size={15} />
-          Back to Subjects
-        </button>
+  const downloadSummary = () => {
+    const content =
+      `${lecture.title}\n\nAI EXECUTIVE SUMMARY\n\n` +
+      lecture.summary.map((item) => `• ${item}`).join("\n");
 
-        <div className="card student-resource-empty">
-          <h3>Lecture not found</h3>
-          <p>The requested lecture does not exist.</p>
-        </div>
-      </div>
-    );
-  }
+    const blob = new Blob([content], {
+      type: "text/plain",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${lecture.title}-Summary.txt`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="page student-page">
-      {/* Back */}
-      <button
-        className="back-button"
-        onClick={() => navigate(`/student/lectures/${lecture.id}`)}
-      >
-        <ArrowLeft size={15} />
-        Back to Lecture
-      </button>
+    <div className="resource-page">
+      <ResourceSidebar navigate={navigate} />
 
-      {/* Lecture Header */}
-      <section className="card student-lecture-info-card">
-        <div className="student-lecture-info-main">
-          <div className="student-lecture-large-icon">
-            <BookOpen size={24} />
-          </div>
+      <main className="resource-main">
+        <ResourceHeader />
 
-          <div>
-            <p className="eyebrow">{lecture.subject}</p>
+        <div className="resource-content">
+          <button
+            className="back-link"
+            onClick={() => navigate(`/student/lectures/${lectureId}`)}
+          >
+            ← Back to Lecture
+          </button>
 
-            <h2>{lecture.title}</h2>
+          <div className="resource-title-row">
+            <div className="resource-title">
+              <div className="resource-meta">
+                <span className="badge">{lecture.code}</span>
 
-            <div className="student-lecture-info-meta">
-              <span>{lecture.lecturer}</span>
-              <span>{lecture.duration}</span>
-              <span>{lecture.date}</span>
+                <span>{lecture.week}</span>
+              </div>
+
+              <h1>{lecture.title}</h1>
+
+              <div className="resource-meta">
+                <span>{lecture.lecturer}</span>
+                <span>{lecture.duration} duration</span>
+              </div>
             </div>
+
+            <button className="primary-button" onClick={downloadSummary}>
+              ↓ Download Summary
+            </button>
           </div>
-        </div>
 
-        <span className={`lecture-status ${lecture.status.toLowerCase()}`}>
-          {lecture.status}
-        </span>
-      </section>
-
-      {/* Material Header */}
-      <section style={{ marginTop: 28 }}>
-        <div className="student-material-header">
-          <div>
-            <p className="eyebrow">Learning Resources</p>
-            <h2>Lecture Summary</h2>
-            <p className="muted">
-              Review the AI-generated summary of this lecture.
-            </p>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="student-material-tabs">
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
-          >
-            <BookOpen size={15} />
-            Overview
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/transcript`)
-            }
-          >
-            Transcript
-          </button>
-
-          <button className="student-material-tab active">
-            <FileText size={15} />
-            Summary
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/key-concepts`)
-            }
-          >
-            Key Concepts
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/flashcards`)
-            }
-          >
-            Flashcards
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/quiz`)}
-          >
-            Quiz
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
-          >
-            Q&A
-          </button>
-        </div>
-
-        {/* Summary */}
-        <div className="card student-material-card">
-          <div className="student-material-card-header">
+          <section className="summary-page-grid">
             <div>
-              <p className="eyebrow">AI Summary</p>
-              <h3>{lecture.title}</h3>
+              <div className="resource-card-large executive-summary">
+                <h2>✦ AI Executive Summary</h2>
+
+                <p>
+                  This lecture introduces the core concepts covered during the
+                  lecture, including machine learning models, optimization
+                  techniques and gradient-based learning.
+                </p>
+              </div>
+
+              <h2 className="section-heading">Key Takeaways</h2>
+
+              <div className="takeaway-grid">
+                {lecture.concepts.map((concept, index) => (
+                  <div className="takeaway-card" key={concept.title}>
+                    <small>Concept {index + 1}</small>
+
+                    <h3>{concept.title}</h3>
+
+                    <p>{concept.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="resource-card-large outline-card">
+                <h2>Structured Outline</h2>
+
+                {lecture.summary.map((item, index) => (
+                  <div className="outline-item" key={index}>
+                    <span>{index + 1}</span>
+
+                    <p>{item}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <FileText size={20} />
-          </div>
+            <aside>
+              <div className="resource-card-large summary-actions">
+                <button className="primary-button" onClick={downloadSummary}>
+                  ↓ Download PDF Notes
+                </button>
 
-          <div className="student-material-content">
-            <p>
-              This lecture introduces the main ideas and concepts covered during
-              the session. The material is organized to help students understand
-              the important topics discussed by the lecturer.
-            </p>
-
-            <p>
-              Students can use this summary as a quick revision resource before
-              reviewing the detailed transcript or practicing with the generated
-              learning activities.
-            </p>
-
-            <p>
-              The summary highlights the core subject matter while keeping the
-              explanation concise and focused on the learning objectives of the
-              lecture.
-            </p>
-          </div>
+                <button
+                  className="action-button"
+                  onClick={() =>
+                    navigate(`/student/lectures/${lectureId}/flashcards`)
+                  }
+                >
+                  ✦ Generate Flashcards
+                </button>
+              </div>
+            </aside>
+          </section>
         </div>
-      </section>
+      </main>
     </div>
   );
 }
 
-export default StudentSummary;
+function ResourceSidebar({ navigate }) {
+  return (
+    <aside className="resource-sidebar">
+      <div className="resource-brand">
+        <div className="resource-logo">L</div>
+
+        <div>
+          <h2>LectaAI</h2>
+          <span>ACADEMIC PORTAL</span>
+        </div>
+      </div>
+
+      <nav className="resource-nav">
+        <button onClick={() => navigate("/dashboard")}>
+          ▦ &nbsp; Dashboard
+        </button>
+
+        <button className="active" onClick={() => navigate("/subjects")}>
+          ▣ &nbsp; Subjects
+        </button>
+
+        <button onClick={() => navigate("/settings")}>⚙ &nbsp; Settings</button>
+      </nav>
+
+      <button className="resource-upload" onClick={() => navigate("/upload")}>
+        ↑ Upload Lecture
+      </button>
+    </aside>
+  );
+}
+
+function ResourceHeader() {
+  return (
+    <header className="resource-header">
+      <input className="resource-search" placeholder="Search lectures..." />
+
+      <div className="resource-header-icons">
+        <span>♧</span>
+        <span>?</span>
+        <div className="resource-profile">A</div>
+      </div>
+    </header>
+  );
+}

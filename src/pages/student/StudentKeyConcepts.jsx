@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, Lightbulb } from "lucide-react";
 import { lectures } from "../../data/lectures";
+import { lectureData } from "../data/lectureData";
 
 function StudentKeyConcepts() {
-  const { id } = useParams();
+  const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find((item) => item.id === Number(id));
+  const lecture = lectures.find((item) => item.id === Number(lectureId));
 
   if (!lecture) {
     return (
@@ -27,7 +28,12 @@ function StudentKeyConcepts() {
     );
   }
 
-  const concepts = [
+  const resource = lectureData[lectureId] || lectureData["lecture-04"];
+
+  const concepts = resource?.concepts?.map((c) => ({
+    title: c.title,
+    description: c.description,
+  })) || [
     {
       title: "Core Concepts",
       description:
@@ -37,16 +43,6 @@ function StudentKeyConcepts() {
       title: "Important Principles",
       description:
         "The major principles discussed during the lecture that students should remember for revision.",
-    },
-    {
-      title: "Practical Application",
-      description:
-        "How the concepts discussed in the lecture can be applied to practical software and learning scenarios.",
-    },
-    {
-      title: "Key Takeaways",
-      description:
-        "The most important points students should understand after completing this lecture.",
     },
   ];
 

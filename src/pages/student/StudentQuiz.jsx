@@ -1,234 +1,233 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, CheckCircle2 } from "lucide-react";
-import { lectures } from "../../data/lectures";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { lectureData } from "../data/lectureData";
+import "../styles/LectureResources.css";
 
-function StudentQuiz() {
-  const { id } = useParams();
+export default function QuizPage() {
+  const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find((item) => item.id === Number(id));
+  const lecture = lectureData[lectureId] || lectureData["lecture-04"];
 
-  if (!lecture) {
+  const [current, setCurrent] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [score, setScore] = useState(0);
+  const [time, setTime] = useState(15 * 60);
+  const [finished, setFinished] = useState(false);
+
+  useEffect(() => {
+    if (finished) return;
+
+    const timer = setInterval(() => {
+      setTime((previous) => {
+        if (previous <= 1) {
+          clearInterval(timer);
+          setFinished(true);
+          return 0;
+        }
+
+        return previous - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [finished]);
+
+  const formatTime = () => {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+      2,
+      "0",
+    )}`;
+  };
+
+  const nextQuestion = () => {
+    if (selected === lecture.quiz[current].answer) {
+      setScore((previous) => previous + 1);
+    }
+
+    if (current === lecture.quiz.length - 1) {
+      setFinished(true);
+    } else {
+      setCurrent((previous) => previous + 1);
+      setSelected(null);
+    }
+  };
+
+  if (finished) {
     return (
-      <div className="page student-page">
-        <button
-          className="back-button"
-          onClick={() => navigate("/student/subjects")}
-        >
-          <ArrowLeft size={15} />
-          Back to Subjects
-        </button>
+      <div className="resource-page">
+        <ResourceSidebar navigate={navigate} />
 
-        <div className="card student-resource-empty">
-          <h3>Lecture not found</h3>
-          <p>The requested lecture does not exist.</p>
-        </div>
+        <main className="resource-main">
+          <ResourceHeader />
+
+          <div className="quiz-result-page">
+            <div className="quiz-result-circle">
+              {score}/{lecture.quiz.length}
+            </div>
+
+            <h1>Quiz Completed 🎉</h1>
+
+            <p>You completed the practice quiz.</p>
+
+            <button
+              className="primary-button"
+              onClick={() => navigate(`/student/lectures/${lectureId}`)}
+            >
+              Back to Lecture
+            </button>
+          </div>
+        </main>
       </div>
     );
   }
 
-  const questions = [
-    {
-      question:
-        "What is the primary purpose of the topic discussed in this lecture?",
-      options: [
-        "To understand the fundamental concepts",
-        "To avoid studying the subject",
-        "To replace all practical work",
-        "None of the above",
-      ],
-      answer: 0,
-    },
-    {
-      question: "Which approach is most useful when learning a new concept?",
-      options: [
-        "Memorizing without understanding",
-        "Understanding the concept and its application",
-        "Skipping examples",
-        "Ignoring important terminology",
-      ],
-      answer: 1,
-    },
-    {
-      question: "What should a student focus on during revision?",
-      options: [
-        "Only the lecture title",
-        "Only the duration of the lecture",
-        "Important concepts, principles, and examples",
-        "Only the lecturer's name",
-      ],
-      answer: 2,
-    },
-    {
-      question: "Why are practical examples useful?",
-      options: [
-        "They help connect concepts with real situations",
-        "They make concepts unnecessary",
-        "They replace all learning resources",
-        "They are only useful for attendance",
-      ],
-      answer: 0,
-    },
-    {
-      question: "What is a good way to check understanding?",
-      options: [
-        "Avoid reviewing the material",
-        "Test yourself using questions and examples",
-        "Read the title repeatedly",
-        "Skip difficult concepts",
-      ],
-      answer: 1,
-    },
-  ];
+  const quiz = lecture.quiz[current];
+
+  const progress = ((current + 1) / lecture.quiz.length) * 100;
 
   return (
-    <div className="page student-page">
-      {/* Back */}
-      <button
-        className="back-button"
-        onClick={() => navigate(`/student/lectures/${lecture.id}`)}
-      >
-        <ArrowLeft size={15} />
-        Back to Lecture
-      </button>
+    <div className="resource-page">
+      <ResourceSidebar navigate={navigate} />
 
-      {/* Lecture Header */}
-      <section className="card student-lecture-info-card">
-        <div className="student-lecture-info-main">
-          <div className="student-lecture-large-icon">
-            <BookOpen size={24} />
-          </div>
+      <main className="resource-main">
+        <ResourceHeader />
 
-          <div>
-            <p className="eyebrow">{lecture.subject}</p>
+        <div className="quiz-content">
+          <div className="quiz-top">
+            <div>
+              <span className="badge">{lecture.code}</span>
 
-            <h2>{lecture.title}</h2>
+              <span className="quiz-duration">◷ {lecture.duration}</span>
 
-            <div className="student-lecture-info-meta">
-              <span>{lecture.lecturer}</span>
-              <span>{lecture.duration}</span>
-              <span>{lecture.date}</span>
+              <h1>{lecture.shortTitle}</h1>
+
+              <p>Practice Quiz - Module 2</p>
             </div>
+
+            <div className="quiz-timer">◷ {formatTime()}</div>
           </div>
-        </div>
 
-        <span className={`lecture-status ${lecture.status.toLowerCase()}`}>
-          {lecture.status}
-        </span>
-      </section>
+          <div className="quiz-progress-header">
+            <span>
+              QUESTION {current + 1} OF {lecture.quiz.length}
+            </span>
 
-      {/* Quiz Section */}
-      <section style={{ marginTop: 28 }}>
-        <div className="student-material-header">
-          <div>
-            <p className="eyebrow">Learning Resources</p>
-
-            <h2>Lecture Quiz</h2>
-
-            <p className="muted">
-              Test your understanding of the concepts covered in this lecture.
-            </p>
+            <span>{Math.round(progress)}% Complete</span>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="student-material-tabs">
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
-          >
-            <BookOpen size={15} />
-            Overview
-          </button>
+          <div className="quiz-progress">
+            <div
+              style={{
+                width: `${progress}%`,
+              }}
+            />
+          </div>
 
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/transcript`)
-            }
-          >
-            Transcript
-          </button>
+          <div className="quiz-layout">
+            <section className="quiz-question-card">
+              <h2>{quiz.question}</h2>
 
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/summary`)}
-          >
-            Summary
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/key-concepts`)
-            }
-          >
-            Key Concepts
-          </button>
-
-          <button
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/flashcards`)
-            }
-          >
-            Flashcards
-          </button>
-
-          <button className="student-material-tab active">Quiz</button>
-
-          <button
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
-          >
-            Q&A
-          </button>
-        </div>
-
-        {/* Quiz */}
-        <div className="student-quiz-list">
-          {questions.map((item, index) => (
-            <div className="card student-quiz-card" key={index}>
-              <div className="student-quiz-question">
-                <span>Question {index + 1}</span>
-
-                <h3>{item.question}</h3>
+              <div className="quiz-reference">
+                Reference: "Lecture Transcript"
               </div>
 
-              <div className="student-quiz-options">
-                {item.options.map((option, optionIndex) => (
-                  <label className="student-quiz-option" key={optionIndex}>
-                    <input
-                      type="radio"
-                      name={`question-${index}`}
-                      value={optionIndex}
-                    />
+              <div className="quiz-options-large">
+                {quiz.options.map((option, index) => (
+                  <button
+                    key={index}
+                    className={selected === index ? "selected" : ""}
+                    onClick={() => setSelected(index)}
+                  >
+                    <span className="radio">
+                      {selected === index ? "●" : "○"}
+                    </span>
 
-                    <span>{option}</span>
-                  </label>
+                    {option}
+                  </button>
                 ))}
               </div>
-            </div>
-          ))}
-        </div>
+            </section>
 
-        {/* Submit */}
-        <div className="student-quiz-footer">
-          <button className="primary-action-button">
-            <CheckCircle2 size={16} />
-            Submit Quiz
-          </button>
-        </div>
+            <aside className="quiz-right">
+              <div className="hint-card">
+                <h3>✦ LectaAI Hint</h3>
 
-        {/* Frontend note */}
-        <div className="student-transcript-note">
-          These questions are sample frontend data. Quiz generation, answer
-          evaluation, scoring, and AI-generated questions will be connected when
-          the backend and AI processing pipeline are added.
+                <p>Think about the core concept discussed in this lecture.</p>
+
+                <button>Generate New Hint</button>
+              </div>
+
+              <div className="quiz-controls">
+                <button>← Previous</button>
+
+                <button
+                  className="next-button"
+                  onClick={nextQuestion}
+                  disabled={selected === null}
+                >
+                  Next →
+                </button>
+
+                <button
+                  className="submit-button"
+                  onClick={() => setFinished(true)}
+                >
+                  ▷ Submit Quiz
+                </button>
+              </div>
+            </aside>
+          </div>
         </div>
-      </section>
+      </main>
     </div>
   );
 }
 
-export default StudentQuiz;
+function ResourceSidebar({ navigate }) {
+  return (
+    <aside className="resource-sidebar">
+      <div className="resource-brand">
+        <div className="resource-logo">L</div>
+
+        <div>
+          <h2>LectaAI</h2>
+          <span>Academic Portal</span>
+        </div>
+      </div>
+
+      <nav className="resource-nav">
+        <button onClick={() => navigate("/dashboard")}>
+          ▦ &nbsp; Dashboard
+        </button>
+
+        <button className="active" onClick={() => navigate("/subjects")}>
+          ▣ &nbsp; Subjects
+        </button>
+
+        <button onClick={() => navigate("/settings")}>⚙ &nbsp; Settings</button>
+      </nav>
+
+      <button className="resource-upload" onClick={() => navigate("/upload")}>
+        ↑ Upload Lecture
+      </button>
+    </aside>
+  );
+}
+
+function ResourceHeader() {
+  return (
+    <header className="resource-header">
+      <input className="resource-search" placeholder="Search..." />
+
+      <div className="resource-header-icons">
+        <span>♧</span>
+        <span>?</span>
+        <div className="resource-profile">A</div>
+      </div>
+    </header>
+  );
+}
