@@ -19,6 +19,9 @@ import FacultyLectureDetails from "../pages/faculty/FacultyLectureDetails";
 import FacultyAnalytics from "../pages/faculty/FacultyAnalytics";
 import FacultySettings from "../pages/faculty/FacultySettings";
 
+import FacultyStudentProgress from "../pages/faculty/StudentProgress";
+import StudentProgressDetails from "../pages/faculty/StudentProgressDetails";
+
 /* =========================
    STUDENT PAGES
 ========================= */
@@ -66,56 +69,44 @@ function AppRoutes() {
         }
       >
         {/* /faculty */}
+
         <Route index element={<Navigate to="dashboard" replace />} />
 
         {/* =========================
             FACULTY DASHBOARD
         ========================= */}
 
-        {/* /faculty/dashboard */}
         <Route path="dashboard" element={<FacultyDashboard />} />
 
         {/* =========================
             FACULTY UPLOADS
         ========================= */}
 
-        {/* /faculty/uploads */}
         <Route path="uploads" element={<FacultyUploads />} />
 
-        {/* /faculty/uploads/new */}
         <Route path="uploads/new" element={<FacultyUploadLecture />} />
 
         {/* =========================
             FACULTY SUBJECTS
         ========================= */}
 
-        {/* /faculty/subjects */}
         <Route path="subjects" element={<FacultySubjects />} />
 
-        {/* =================================================
-            SUBJECT → LECTURERS
-           
-            Example:
-            /faculty/subjects/software-engineering
-        ================================================= */}
+        {/* =========================
+            SUBJECT DETAILS
+        ========================= */}
 
         <Route path="subjects/:subjectId" element={<FacultySubjectDetails />} />
 
-        {/* =================================================
-            LECTURE DETAILS
-           
-            Example:
-            /faculty/lectures/lecture-1
-        ================================================= */}
+        {/* =========================
+            SHORT LECTURE DETAILS
+        ========================= */}
 
         <Route path="lectures/:lectureId" element={<FacultyLectureDetails />} />
 
-        {/* =================================================
-            LECTURER → LECTURES
-           
-            Example:
-            /faculty/subjects/software-engineering/lecturers/john
-        ================================================= */}
+        {/* =========================
+            LECTURER PAGE
+        ========================= */}
 
         <Route
           path="subjects/:subjectId/lecturers/:lecturerId"
@@ -123,13 +114,19 @@ function AppRoutes() {
         />
 
         {/* =================================================
-            INDIVIDUAL LECTURE ANALYTICS
+            FULL LECTURE DETAILS
 
             Example:
-            /faculty/subjects/software-engineering/lecturers/john/lectures/lecture-1/analytics
+            /faculty/subjects/1/lecturers/ada-lovelace/lectures/1
+        ================================================= */}
 
-            This allows different lecturers and different
-            lectures to have completely separate analytics.
+        <Route
+          path="subjects/:subjectId/lecturers/:lecturerId/lectures/:lectureId"
+          element={<FacultyLectureDetails />}
+        />
+
+        {/* =================================================
+            INDIVIDUAL LECTURE ANALYTICS
         ================================================= */}
 
         <Route
@@ -137,14 +134,9 @@ function AppRoutes() {
           element={<FacultyAnalytics />}
         />
 
-        {/* =================================================
+        {/* =========================
             SHORT ANALYTICS ROUTE
-
-            Useful when clicking View Analytics from Uploads.
-
-            Example:
-            /faculty/analytics/software-engineering/john/lecture-1
-        ================================================= */}
+        ========================= */}
 
         <Route
           path="analytics/:subjectId/:lecturerId/:lectureId"
@@ -152,10 +144,27 @@ function AppRoutes() {
         />
 
         {/* =========================
+            FACULTY STUDENT PROGRESS
+        ========================= */}
+
+        <Route path="student-progress" element={<FacultyStudentProgress />} />
+
+        {/* =================================================
+            INDIVIDUAL STUDENT PROGRESS
+
+            Example:
+            /faculty/student-progress/1CS21CS001
+        ================================================= */}
+
+        <Route
+          path="student-progress/:usn"
+          element={<StudentProgressDetails />}
+        />
+
+        {/* =========================
             FACULTY SETTINGS
         ========================= */}
 
-        {/* /faculty/settings */}
         <Route path="settings" element={<FacultySettings />} />
       </Route>
 
@@ -172,76 +181,86 @@ function AppRoutes() {
         }
       >
         {/* /student */}
+
         <Route index element={<Navigate to="dashboard" replace />} />
 
         {/* =========================
             STUDENT DASHBOARD
         ========================= */}
 
-        {/* /student/dashboard */}
         <Route path="dashboard" element={<StudentDashboard />} />
 
         {/* =========================
             STUDENT SUBJECTS
         ========================= */}
 
-        {/* /student/subjects */}
         <Route path="subjects" element={<StudentSubjects />} />
 
-        {/* /student/subjects/:subjectId */}
         <Route path="subjects/:subjectId" element={<SubjectLectures />} />
 
         {/* =========================
             STUDENT LECTURES
         ========================= */}
 
-        {/* /student/lectures/:lectureId */}
         <Route path="lectures/:lectureId" element={<StudentLectureDetails />} />
 
         {/* =========================
-            STUDENT LECTURE RESOURCES
+            STUDENT TRANSCRIPT
         ========================= */}
 
-        {/* /student/lectures/:lectureId/transcript */}
         <Route
           path="lectures/:lectureId/transcript"
           element={<StudentTranscript />}
         />
 
-        {/* /student/lectures/:lectureId/summary */}
+        {/* =========================
+            STUDENT SUMMARY
+        ========================= */}
+
         <Route
           path="lectures/:lectureId/summary"
           element={<StudentSummary />}
         />
 
-        {/* /student/lectures/:lectureId/key-concepts */}
+        {/* =========================
+            STUDENT KEY CONCEPTS
+        ========================= */}
+
         <Route
           path="lectures/:lectureId/key-concepts"
           element={<StudentKeyConcepts />}
         />
 
-        {/* /student/lectures/:lectureId/flashcards */}
+        {/* =========================
+            STUDENT FLASHCARDS
+        ========================= */}
+
         <Route
           path="lectures/:lectureId/flashcards"
           element={<StudentFlashcards />}
         />
 
-        {/* /student/lectures/:lectureId/quiz */}
+        {/* =========================
+            STUDENT QUIZ
+        ========================= */}
+
         <Route path="lectures/:lectureId/quiz" element={<StudentQuiz />} />
 
-        {/* /student/lectures/:lectureId/qa */}
+        {/* =========================
+            STUDENT Q&A
+        ========================= */}
+
         <Route path="lectures/:lectureId/qa" element={<StudentQA />} />
 
-        {/* ======================================================
-            STUDENT SUBJECT → LECTURERS → LECTURES
-            Example:
-            /student/subjects/:subjectId/lecturers
-            /student/subjects/:subjectId/lecturers/:lecturerId
-        ====================================================== */}
+        {/* =========================
+            SUBJECT → LECTURERS
+        ========================= */}
+
         <Route
           path="subjects/:subjectId/lecturers"
           element={<SubjectLectures />}
         />
+
         <Route
           path="subjects/:subjectId/lecturers/:lecturerId"
           element={<SubjectLectures />}
@@ -251,14 +270,12 @@ function AppRoutes() {
             STUDENT PROGRESS
         ========================= */}
 
-        {/* /student/progress */}
         <Route path="progress" element={<StudentProgress />} />
 
         {/* =========================
             STUDENT SETTINGS
         ========================= */}
 
-        {/* /student/settings */}
         <Route path="settings" element={<StudentSettings />} />
       </Route>
 

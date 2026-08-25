@@ -1,4 +1,12 @@
-import { ArrowLeft, User, BarChart3, BookOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  Clock,
+  User,
+} from "lucide-react";
+
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -9,55 +17,53 @@ export default function FacultySubjectDetails() {
   const navigate = useNavigate();
   const { subjectId } = useParams();
 
-  // =========================================
-  // FIND SELECTED SUBJECT
-  // =========================================
+  /* =====================================================
+     FIND SELECTED SUBJECT
+  ===================================================== */
 
   const subject = useMemo(() => {
     return subjects.find((item) => String(item.id) === String(subjectId));
   }, [subjectId]);
 
-  // =========================================
-  // FIND LECTURES FOR THIS SUBJECT
-  // =========================================
+  /* =====================================================
+     FIND ONLY THIS SUBJECT'S LECTURES
+
+     subjectId is used first so lectures from another
+     subject cannot accidentally appear here.
+
+     The subject-name check is only a fallback for older
+     frontend data that may not contain subjectId.
+  ===================================================== */
 
   const subjectLectures = useMemo(() => {
     if (!subject) {
       return [];
     }
 
-    return lectures.filter(
-      (lecture) => String(lecture.subjectId) === String(subject.id),
-    );
-  }, [subject]);
-
-  // =========================================
-  // GROUP LECTURES BY LECTURER
-  // =========================================
-
-  const lecturers = useMemo(() => {
-    const lecturerMap = new Map();
-
-    subjectLectures.forEach((lecture) => {
-      const lecturerId = String(lecture.lecturerId);
-
-      if (!lecturerMap.has(lecturerId)) {
-        lecturerMap.set(lecturerId, {
-          id: lecture.lecturerId,
-          name: lecture.lecturer || "Unknown Lecturer",
-          lectures: [],
-        });
+    return lectures.filter((lecture) => {
+      if (lecture.subjectId) {
+        return String(lecture.subjectId) === String(subject.id);
       }
 
-      lecturerMap.get(lecturerId).lectures.push(lecture);
+      return lecture.subject?.toLowerCase() === subject.name?.toLowerCase();
     });
+  }, [subject]);
 
-    return Array.from(lecturerMap.values());
-  }, [subjectLectures]);
+  /* =====================================================
+     OPEN SELECTED LECTURE
+  ===================================================== */
 
-  // =========================================
-  // SUBJECT NOT FOUND
-  // =========================================
+  const openLecture = (lecture) => {
+    const lecturerId = lecture.lecturerId || "unknown-lecturer";
+
+    navigate(
+      `/faculty/subjects/${subject.id}/lecturers/${lecturerId}/lectures/${lecture.id}`,
+    );
+  };
+
+  /* =====================================================
+     SUBJECT NOT FOUND
+  ===================================================== */
 
   if (!subject) {
     return (
@@ -67,7 +73,7 @@ export default function FacultySubjectDetails() {
           className="back-button"
           onClick={() => navigate("/faculty/subjects")}
           style={{
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
             gap: 6,
           }}
@@ -86,18 +92,16 @@ export default function FacultySubjectDetails() {
         >
           <BookOpen size={42} />
 
-          <h2>Subject Not Found</h2>
-
-          <p className="muted">The selected subject could not be found.</p>
-
-          <p
-            className="muted"
+          <h2
             style={{
-              fontSize: 13,
+              marginTop: 16,
+              marginBottom: 8,
             }}
           >
-            Subject ID: {subjectId}
-          </p>
+            Subject Not Found
+          </h2>
+
+          <p className="muted">The selected subject could not be found.</p>
         </section>
       </div>
     );
@@ -105,16 +109,16 @@ export default function FacultySubjectDetails() {
 
   return (
     <div className="page faculty-subject-details">
-      {/* =========================================
-          BACK BUTTON
-      ========================================= */}
+      {/* =================================================
+          BACK
+      ================================================= */}
 
       <button
         type="button"
         className="back-button"
         onClick={() => navigate("/faculty/subjects")}
         style={{
-          display: "flex",
+          display: "inline-flex",
           alignItems: "center",
           gap: 6,
         }}
@@ -123,9 +127,9 @@ export default function FacultySubjectDetails() {
         Back to Subjects
       </button>
 
-      {/* =========================================
+      {/* =================================================
           SUBJECT HEADER
-      ========================================= */}
+      ================================================= */}
 
       <section
         style={{
@@ -134,50 +138,60 @@ export default function FacultySubjectDetails() {
       >
         <p className="eyebrow">SUBJECT</p>
 
-        <h1>{subject.name}</h1>
+        <h1
+          style={{
+            marginBottom: 8,
+          }}
+        >
+          {subject.name}
+        </h1>
 
-        <p className="muted">
-          {subject.description || `${subject.name} subject`}
-        </p>
+        {subject.code && (
+          <p
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            {subject.code}
+          </p>
+        )}
 
         <p
           className="muted"
           style={{
             marginTop: 8,
-            fontSize: 14,
+            marginBottom: 0,
+            maxWidth: 720,
+            lineHeight: 1.6,
           }}
         >
-          Select a lecturer and then choose a specific lecture to view its
-          analytics.
+          {subject.description || `${subject.name} subject`}
         </p>
       </section>
 
-      {/* =========================================
-          LECTURER COUNT
-      ========================================= */}
+      {/* =================================================
+          LECTURE SUMMARY
+      ================================================= */}
 
       <section
         className="card"
         style={{
           marginTop: 24,
-          padding: 24,
+          padding: 22,
           display: "flex",
           alignItems: "center",
-          gap: 18,
+          gap: 16,
         }}
       >
         <div
+          className="upload-icon"
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f1f5f9",
+            flexShrink: 0,
           }}
         >
-          <User size={24} />
+          <BookOpen size={22} />
         </div>
 
         <div>
@@ -185,9 +199,10 @@ export default function FacultySubjectDetails() {
             className="muted"
             style={{
               margin: 0,
+              fontSize: 13,
             }}
           >
-            Lecturers
+            Total Lectures
           </p>
 
           <h2
@@ -195,177 +210,262 @@ export default function FacultySubjectDetails() {
               margin: "4px 0 0",
             }}
           >
-            {lecturers.length}
+            {subjectLectures.length}
           </h2>
         </div>
       </section>
 
-      {/* =========================================
-          LECTURERS
-      ========================================= */}
+      {/* =================================================
+          LECTURES HEADER
+      ================================================= */}
 
       <section
         style={{
-          marginTop: 28,
+          marginTop: 30,
         }}
       >
-        <p className="eyebrow">LECTURERS</p>
+        <p className="eyebrow">LECTURES</p>
 
         <h2
           style={{
-            margin: "4px 0 0",
+            marginTop: 4,
+            marginBottom: 6,
           }}
         >
-          Lecturers under {subject.name}
+          Lectures in {subject.name}
         </h2>
 
-        <p className="muted">Each lecturer's lectures are shown separately.</p>
+        <p
+          className="muted"
+          style={{
+            margin: 0,
+          }}
+        >
+          Select a lecture to view its transcript, notes, flashcards, quiz,
+          analytics and student progress.
+        </p>
+      </section>
 
-        {/* =====================================
-            NO LECTURERS
-        ===================================== */}
+      {/* =================================================
+          NO LECTURES
+      ================================================= */}
 
-        {lecturers.length === 0 ? (
-          <div
-            className="card"
+      {subjectLectures.length === 0 ? (
+        <section
+          className="card"
+          style={{
+            marginTop: 18,
+            padding: 40,
+            textAlign: "center",
+          }}
+        >
+          <BookOpen size={42} />
+
+          <h3
             style={{
-              marginTop: 20,
-              padding: 40,
-              textAlign: "center",
+              marginTop: 16,
+              marginBottom: 8,
             }}
           >
-            <User
-              size={42}
+            No Lectures Available
+          </h3>
+
+          <p
+            className="muted"
+            style={{
+              margin: 0,
+            }}
+          >
+            No lectures have been uploaded for this subject yet.
+          </p>
+        </section>
+      ) : (
+        /* =================================================
+           LECTURE LIST
+        ================================================= */
+
+        <section
+          style={{
+            display: "grid",
+            gap: 14,
+            marginTop: 18,
+          }}
+        >
+          {subjectLectures.map((lecture, index) => (
+            <button
+              key={lecture.id}
+              type="button"
+              className="card"
+              onClick={() => openLecture(lecture)}
               style={{
-                marginBottom: 10,
+                width: "100%",
+                padding: 20,
+                textAlign: "left",
+                cursor: "pointer",
+                background: "var(--card-bg)",
+                border: "1px solid var(--border-color)",
               }}
-            />
-
-            <h3>No Lecturers Found</h3>
-
-            <p className="muted">
-              No lectures have been uploaded for this subject yet.
-            </p>
-          </div>
-        ) : (
-          /* =====================================
-             LECTURER GRID
-          ===================================== */
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              gap: 18,
-              marginTop: 20,
-            }}
-          >
-            {lecturers.map((lecturer) => (
+            >
               <div
-                key={lecturer.id}
-                className="card"
                 style={{
-                  padding: 24,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 18,
+                  flexWrap: "wrap",
                 }}
               >
-                {/* Lecturer Header */}
+                {/* =====================================
+                    LEFT
+                ===================================== */}
 
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "flex-start",
-                    gap: 12,
+                    gap: 15,
+                    minWidth: 0,
+                    flex: "1 1 400px",
                   }}
                 >
                   <div
+                    className="upload-icon"
                     style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      border: "1px solid #e2e8f0",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >
-                    <User size={23} />
+                    <BookOpen size={21} />
                   </div>
 
-                  <BarChart3 size={22} />
+                  <div
+                    style={{
+                      minWidth: 0,
+                    }}
+                  >
+                    <p
+                      className="eyebrow"
+                      style={{
+                        margin: 0,
+                      }}
+                    >
+                      LECTURE {String(index + 1).padStart(2, "0")}
+                    </p>
+
+                    <h3
+                      style={{
+                        marginTop: 5,
+                        marginBottom: 0,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {lecture.title}
+                    </h3>
+
+                    {/* Lecturer */}
+
+                    {lecture.lecturer && (
+                      <div
+                        className="muted"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginTop: 10,
+                          fontSize: 13,
+                        }}
+                      >
+                        <User size={14} />
+
+                        <span>{lecture.lecturer}</span>
+                      </div>
+                    )}
+
+                    {/* Date + Duration */}
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        flexWrap: "wrap",
+                        marginTop: 8,
+                      }}
+                    >
+                      {lecture.date && (
+                        <span
+                          className="muted"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: 12,
+                          }}
+                        >
+                          <CalendarDays size={13} />
+
+                          {lecture.date}
+                        </span>
+                      )}
+
+                      {lecture.duration && (
+                        <span
+                          className="muted"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: 12,
+                          }}
+                        >
+                          <Clock size={13} />
+
+                          {lecture.duration}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Lecturer Name */}
-
-                <h3
-                  style={{
-                    marginTop: 20,
-                    marginBottom: 5,
-                  }}
-                >
-                  {lecturer.name}
-                </h3>
-
-                <p className="muted">
-                  {lecturer.lectures.length}{" "}
-                  {lecturer.lectures.length === 1 ? "lecture" : "lectures"}
-                </p>
-
-                {/* =================================
-                    LECTURES FOR THIS LECTURER
-                ================================= */}
+                {/* =====================================
+                    RIGHT
+                ===================================== */}
 
                 <div
                   style={{
-                    marginTop: 18,
-                    display: "grid",
-                    gap: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    flexShrink: 0,
                   }}
                 >
-                  {lecturer.lectures.map((lecture) => (
-                    <div
-                      key={lecture.id}
-                      style={{
-                        padding: 14,
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 10,
-                      }}
+                  {lecture.status && (
+                    <span
+                      className={`lecture-status ${
+                        lecture.status?.toLowerCase() || ""
+                      }`}
                     >
-                      <strong
-                        style={{
-                          display: "block",
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {lecture.title}
-                      </strong>
+                      {lecture.status}
+                    </span>
+                  )}
 
-                      <button
-                        type="button"
-                        className="secondary-action-button"
-                        onClick={() =>
-                          navigate(
-                            `/faculty/subjects/${subject.id}/lecturers/${lecturer.id}/lectures/${lecture.id}/analytics`,
-                          )
-                        }
-                        style={{
-                          marginTop: 12,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        View Analytics
-                        <span>→</span>
-                      </button>
-                    </div>
-                  ))}
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    View Lecture
+                    <ArrowRight size={16} />
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </button>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

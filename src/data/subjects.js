@@ -1,32 +1,25 @@
 export const subjects = [
   {
     id: "1",
-    name: "Software Engineering",
-    code: "SE",
-    description: "Software Engineering subject",
+    name: "Operating Systems",
+    code: "CS-301",
+    description: "Operating systems concepts and resource management",
+    batch: "Batch 2024-A",
   },
+
   {
     id: "2",
-    name: "Data Structures",
-    code: "DS",
-    description: "Data Structures subject",
+    name: "Memory Management",
+    code: "CS-205",
+    description: "Memory management, allocation, paging, and virtual memory",
+    batch: "Batch 2023-B",
   },
+
   {
     id: "3",
-    name: "Database Management",
-    code: "DBMS",
-    description: "Database Management subject",
-  },
-  {
-    id: "4",
-    name: "Data Mining",
-    code: "DM",
-    description: "Data Mining subject",
-  },
-  {
-    id: "5",
-    name: "Computer Science 301",
-    code: "CS301",
-    description: "Neural networks and machine learning",
+    name: "Advanced Network Architecture",
+    code: "CS-410",
+    description: "Advanced networking concepts and network architecture",
+    batch: "Batch 2024-A",
   },
 ];

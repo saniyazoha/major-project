@@ -4,6 +4,7 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
+  LogOut,
 } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -63,17 +64,64 @@ export default function StudentDashboard() {
     });
   }, []);
 
+  /*
+   * Frontend-only logout.
+   *
+   * The existing Login page stores authentication information
+   * in localStorage using these keys:
+   *
+   * isAuthenticated
+   * role
+   * username
+   *
+   * Remove all of them and return to the existing Login page.
+   */
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("role");
+    localStorage.removeItem("username");
+
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="page">
       {/* Page Header */}
       <section className="student-dashboard-header">
-        <p className="eyebrow">LEARNING</p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 20,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <p className="eyebrow">LEARNING</p>
 
-        <h1>Student Dashboard</h1>
+            <h1>Student Dashboard</h1>
 
-        <p className="muted">
-          Continue learning and track your progress across your subjects.
-        </p>
+            <p className="muted">
+              Continue learning and track your progress across your subjects.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="secondary-action-button"
+            onClick={handleLogout}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
+        </div>
       </section>
 
       {/* Overview Cards */}

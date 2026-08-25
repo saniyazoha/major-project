@@ -6679,3 +6679,1578 @@ textarea:focus-visible {
     grid-template-columns: 1fr 1fr;
   }
 }
+/* =========================================================
+   SIDEBAR COMPACT SPACING - FINAL OVERRIDE
+   ========================================================= */
+
+.sidebar {
+  width: 250px;
+  min-height: 100vh;
+
+  background: #ffffff;
+  border-right: 1px solid #e4e9f1;
+
+  display: flex;
+  flex-direction: column;
+
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  z-index: 100;
+}
+
+
+/* Logo area */
+
+.sidebar-logo {
+  min-height: 58px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 10px 16px;
+
+  border-bottom: 1px solid #edf0f5;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+
+  border-radius: 9px;
+
+  background: #173b6d;
+  color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 16px;
+
+  flex-shrink: 0;
+}
+
+.sidebar-logo h2 {
+  margin: 0;
+
+  font-size: 16px;
+  line-height: 1.15;
+
+  font-weight: 700;
+
+  color: #173b6d;
+}
+
+.sidebar-logo span {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 9px;
+  line-height: 1.2;
+
+  color: #8a94a6;
+}
+
+
+/* =========================================================
+   SIDEBAR NAVIGATION
+   ========================================================= */
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+
+  padding: 8px 10px;
+}
+
+.sidebar-link {
+  min-height: 36px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 7px 10px;
+
+  border-radius: 8px;
+
+  text-decoration: none;
+
+  color: #667085;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.sidebar-link:hover {
+  background: #f3f6fa;
+
+  color: #173b6d;
+}
+
+.sidebar-link.active {
+  background: #e8f0fb;
+
+  color: #173b6d;
+
+  font-weight: 600;
+}
+
+.sidebar-link svg {
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   MOBILE SIDEBAR
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 72px;
+  }
+
+  .sidebar-logo {
+    min-height: 58px;
+
+    justify-content: center;
+
+    padding: 10px;
+  }
+
+  .sidebar-logo > div:last-child {
+    display: none;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sidebar-nav {
+    padding: 8px 7px;
+
+    gap: 2px;
+  }
+
+  .sidebar-link {
+    min-height: 36px;
+
+    justify-content: center;
+
+    padding: 7px;
+  }
+
+  .sidebar-link span {
+    display: none;
+  }
+
+  .main-content {
+    width: calc(100% - 72px);
+
+    margin-left: 72px;
+  }
+}
+/* =========================================================
+   LECTAI THEME SYSTEM - LIGHT / DARK
+   Final global override
+   ========================================================= */
+
+:root {
+  color-scheme: light;
+
+  --page-bg: #f6f8fc;
+  --surface-bg: #ffffff;
+  --surface-muted: #f7f9fc;
+  --surface-soft: #eef4fb;
+  --card-bg: #ffffff;
+  --border-color: #e4e9f1;
+  --border-strong: #d5dce7;
+
+  --text-primary: #102a43;
+  --text-body: #172033;
+  --text-secondary: #667085;
+  --text-soft: #94a3b8;
+
+  --brand: #173b6d;
+  --brand-hover: #12325d;
+  --accent: #1f6feb;
+  --accent-soft: #e8f0fb;
+
+  --settings-icon-bg: #eef5fb;
+  --settings-icon-color: #173b6d;
+
+  --success-bg: #eaf7ef;
+  --success-text: #19733e;
+  --warning-bg: #fff6df;
+  --warning-text: #9a6700;
+  --danger-bg: #fff0f0;
+  --danger-text: #b42318;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page-bg: #0f1724;
+  --surface-bg: #172131;
+  --surface-muted: #1b2738;
+  --surface-soft: #223147;
+  --card-bg: #172131;
+  --border-color: #2b394c;
+  --border-strong: #3b4a5f;
+
+  --text-primary: #eef4fb;
+  --text-body: #e4ebf4;
+  --text-secondary: #a9b7c8;
+  --text-soft: #7f90a5;
+
+  --brand: #7fb1f1;
+  --brand-hover: #a6c9f5;
+  --accent: #69a7f5;
+  --accent-soft: #1c3554;
+
+  --settings-icon-bg: #22344a;
+  --settings-icon-color: #9ec7f7;
+
+  --success-bg: #19382b;
+  --success-text: #8ee0b1;
+  --warning-bg: #40351d;
+  --warning-text: #f3cf76;
+  --danger-bg: #412326;
+  --danger-text: #f3a0a5;
+}
+
+/* Smooth theme transitions */
+html,
+body,
+#root,
+.app-layout,
+.main-content,
+.page-content,
+.sidebar,
+.app-header,
+.card,
+input,
+select,
+textarea,
+button,
+.student-search-box,
+.student-subject-card,
+.lecture-card,
+.dashboard-panel,
+.stat-card,
+.activity-card,
+.action-card,
+.progress-summary-card,
+.progress-subject-card,
+.login-page,
+.login-card,
+.role-selector,
+.upload-drop-zone,
+.resource-page,
+.resource-header,
+.resource-card-large,
+.transcript-panel,
+.side-card,
+.takeaway-card,
+.qa-message,
+.qa-input-area,
+.quiz-question-card,
+.quiz-timer,
+.quiz-controls,
+.quiz-options-large button,
+.large-flashcard,
+.flashcard-navigation button,
+.student-qa-chat,
+.student-qa-chat-notice,
+.student-qa-input-area,
+.student-qa-input,
+.student-chat-bubble,
+.student-quiz-option,
+.student-qa-answer,
+.student-subject-progress-item,
+.details-lecture-card,
+.details-empty-state {
+  transition:
+    background-color 0.22s ease,
+    color 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+/* =========================================================
+   GLOBAL DARK MODE
+   ========================================================= */
+
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] #root,
+:root[data-theme="dark"] .app-layout,
+:root[data-theme="dark"] .main-content,
+:root[data-theme="dark"] .page-content,
+:root[data-theme="dark"] .page,
+:root[data-theme="dark"] .student-page,
+:root[data-theme="dark"] .faculty-page,
+:root[data-theme="dark"] .faculty-settings-page {
+  background: var(--page-bg) !important;
+  color: var(--text-body) !important;
+}
+
+:root[data-theme="dark"] h1,
+:root[data-theme="dark"] h2,
+:root[data-theme="dark"] h3,
+:root[data-theme="dark"] h4,
+:root[data-theme="dark"] h5,
+:root[data-theme="dark"] h6,
+:root[data-theme="dark"] strong,
+:root[data-theme="dark"] .app-header h1,
+:root[data-theme="dark"] .sidebar-logo h2,
+:root[data-theme="dark"] .page-header h1,
+:root[data-theme="dark"] .student-page h2,
+:root[data-theme="dark"] .faculty-dashboard-header h1,
+:root[data-theme="dark"] .faculty-section-header h2,
+:root[data-theme="dark"] .details-page-header h1,
+:root[data-theme="dark"] .details-section-header h2,
+:root[data-theme="dark"] .details-lecture-content h3,
+:root[data-theme="dark"] .student-settings-section-header h2,
+:root[data-theme="dark"] .student-subject-card h3,
+:root[data-theme="dark"] .student-detail-lecture-main h3,
+:root[data-theme="dark"] .student-lecture-info-main h2,
+:root[data-theme="dark"] .student-material-header h2,
+:root[data-theme="dark"] .student-material-card-header h3,
+:root[data-theme="dark"] .student-key-concept-card h3,
+:root[data-theme="dark"] .student-flashcard h3,
+:root[data-theme="dark"] .student-quiz-card h3,
+:root[data-theme="dark"] .student-qa-ask-content h3,
+:root[data-theme="dark"] .student-qa-heading h2,
+:root[data-theme="dark"] .student-qa-question h3,
+:root[data-theme="dark"] .student-transcript-header h3,
+:root[data-theme="dark"] .student-transcript-block h4,
+:root[data-theme="dark"] .student-summary-card-header h3,
+:root[data-theme="dark"] .student-resource-empty h3,
+:root[data-theme="dark"] .resource-title h1,
+:root[data-theme="dark"] .large-flashcard h2,
+:root[data-theme="dark"] .student-qa-header h1,
+:root[data-theme="dark"] .progress-summary-card h3,
+:root[data-theme="dark"] .progress-subject-card h4,
+:root[data-theme="dark"] .student-progress-card-title h3,
+:root[data-theme="dark"] .student-progress-card-heading h3,
+:root[data-theme="dark"] .student-study-activity-header h3 {
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="dark"] .muted,
+:root[data-theme="dark"] p,
+:root[data-theme="dark"] span,
+:root[data-theme="dark"] small,
+:root[data-theme="dark"] .dashboard-copy,
+:root[data-theme="dark"] .activity-detail,
+:root[data-theme="dark"] .continue-description,
+:root[data-theme="dark"] .lecture-duration,
+:root[data-theme="dark"] .progress-strip-info,
+:root[data-theme="dark"] .lecture-card-subject,
+:root[data-theme="dark"] .lecture-card-meta,
+:root[data-theme="dark"] .student-subject-code,
+:root[data-theme="dark"] .student-subject-progress-label,
+:root[data-theme="dark"] .student-subject-card-footer,
+:root[data-theme="dark"] .student-detail-lecture-number,
+:root[data-theme="dark"] .student-detail-lecture-meta,
+:root[data-theme="dark"] .student-lecture-info-meta,
+:root[data-theme="dark"] .resource-meta,
+:root[data-theme="dark"] .flashcard-label,
+:root[data-theme="dark"] .student-progress-overall-stats span,
+:root[data-theme="dark"] .student-progress-stat span,
+:root[data-theme="dark"] .student-study-activity-legend {
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="dark"] .eyebrow,
+:root[data-theme="dark"] .student-subject-view,
+:root[data-theme="dark"] .lecture-card-action,
+:root[data-theme="dark"] .student-transcript-time,
+:root[data-theme="dark"] .student-progress-details-button,
+:root[data-theme="dark"] .student-subject-progress-item-top b {
+  color: #82b8fa !important;
+}
+
+/* =========================================================
+   SIDEBAR + TOP NAV
+   ========================================================= */
+
+:root[data-theme="dark"] .sidebar {
+  background: #121c2a !important;
+  border-right-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .sidebar-logo {
+  border-bottom-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .sidebar-logo span {
+  color: var(--text-soft) !important;
+}
+
+:root[data-theme="dark"] .logo-icon {
+  background: #254d7d !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .sidebar-link {
+  color: #a9b7c8 !important;
+}
+
+:root[data-theme="dark"] .sidebar-link:hover {
+  background: #1c2a3c !important;
+  color: #dcecff !important;
+}
+
+:root[data-theme="dark"] .sidebar-link.active {
+  background: #203650 !important;
+  color: #9bc7ff !important;
+}
+
+:root[data-theme="dark"] .app-header {
+  background: #121c2a !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .header-user {
+  background: #1e2a3b !important;
+  color: #c8d4e3 !important;
+}
+
+/* =========================================================
+   CARDS / PANELS
+   ========================================================= */
+
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .stat-card,
+:root[data-theme="dark"] .dashboard-panel,
+:root[data-theme="dark"] .activity-card,
+:root[data-theme="dark"] .action-card,
+:root[data-theme="dark"] .progress-summary-card,
+:root[data-theme="dark"] .progress-subject-card,
+:root[data-theme="dark"] .student-subject-card,
+:root[data-theme="dark"] .lecture-card,
+:root[data-theme="dark"] .faculty-stat-card,
+:root[data-theme="dark"] .details-lecture-card,
+:root[data-theme="dark"] .student-notification-option,
+:root[data-theme="dark"] .faculty-notification-option,
+:root[data-theme="dark"] .faculty-theme-setting,
+:root[data-theme="dark"] .student-flashcard,
+:root[data-theme="dark"] .student-quiz-card,
+:root[data-theme="dark"] .student-qa-card,
+:root[data-theme="dark"] .student-transcript-card,
+:root[data-theme="dark"] .student-summary-card,
+:root[data-theme="dark"] .student-key-concept-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-body) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .card[style*="cursor: pointer"]:hover,
+:root[data-theme="dark"] .student-subject-card:hover,
+:root[data-theme="dark"] .lecture-card:hover,
+:root[data-theme="dark"] .details-lecture-card:hover,
+:root[data-theme="dark"] .action-card:hover {
+  border-color: #49617f !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Override common inline light surfaces */
+:root[data-theme="dark"] .card [style*="background: #f7f9fc"],
+:root[data-theme="dark"] .card [style*="background:#f7f9fc"],
+:root[data-theme="dark"] .card [style*="background: #f5f7fa"],
+:root[data-theme="dark"] .card [style*="background: #f7f8fb"],
+:root[data-theme="dark"] .card [style*="background: #f5f9ff"],
+:root[data-theme="dark"] .card [style*="background: #eef4ff"],
+:root[data-theme="dark"] .card [style*="background: #eef4fb"],
+:root[data-theme="dark"] .card [style*="background: #eef2f7"],
+:root[data-theme="dark"] .card [style*="background: #fafbfd"],
+:root[data-theme="dark"] .card [style*="background: #ffffff"],
+:root[data-theme="dark"] .card [style*="background:#ffffff"] {
+  background: var(--surface-muted) !important;
+}
+
+/* =========================================================
+   FORMS
+   ========================================================= */
+
+:root[data-theme="dark"] .upload-form-field label,
+:root[data-theme="dark"] .login-field label {
+  color: #dbe6f3 !important;
+}
+
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] .login-input,
+:root[data-theme="dark"] .student-search-box,
+:root[data-theme="dark"] .student-qa-input-wrapper,
+:root[data-theme="dark"] .student-qa-input,
+:root[data-theme="dark"] .qa-input-area,
+:root[data-theme="dark"] .resource-search {
+  background: #111b29 !important;
+  color: var(--text-body) !important;
+  border-color: var(--border-strong) !important;
+}
+
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: #75869a !important;
+}
+
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus,
+:root[data-theme="dark"] textarea:focus,
+:root[data-theme="dark"] .student-search-box:focus-within,
+:root[data-theme="dark"] .student-qa-input-wrapper:focus-within,
+:root[data-theme="dark"] .student-qa-input:focus-within {
+  border-color: #6799d5 !important;
+  box-shadow: 0 0 0 3px rgba(105, 167, 245, 0.14) !important;
+}
+
+:root[data-theme="dark"] select option {
+  background: #111b29;
+  color: var(--text-body);
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+:root[data-theme="dark"] .primary-action-button,
+:root[data-theme="dark"] .primary-button,
+:root[data-theme="dark"] .login-submit-button,
+:root[data-theme="dark"] .login-button,
+:root[data-theme="dark"] .resource-upload {
+  background: #2d5f98 !important;
+  border-color: #2d5f98 !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .primary-action-button:hover,
+:root[data-theme="dark"] .primary-button:hover,
+:root[data-theme="dark"] .login-submit-button:hover,
+:root[data-theme="dark"] .login-button:hover {
+  background: #3b71ae !important;
+  border-color: #3b71ae !important;
+}
+
+:root[data-theme="dark"] .secondary-action-button,
+:root[data-theme="dark"] .back-button,
+:root[data-theme="dark"] .action-button,
+:root[data-theme="dark"] .flashcard-navigation button,
+:root[data-theme="dark"] .quiz-controls button,
+:root[data-theme="dark"] .quiz-options-large button {
+  background: #172334 !important;
+  border-color: var(--border-strong) !important;
+  color: #d9e4f1 !important;
+}
+
+:root[data-theme="dark"] .secondary-action-button:hover,
+:root[data-theme="dark"] .back-button:hover,
+:root[data-theme="dark"] .action-button:hover,
+:root[data-theme="dark"] .flashcard-navigation button:hover,
+:root[data-theme="dark"] .quiz-controls button:hover,
+:root[data-theme="dark"] .quiz-options-large button:hover {
+  background: #223147 !important;
+  border-color: #536986 !important;
+}
+
+:root[data-theme="dark"] .text-button,
+:root[data-theme="dark"] .back-link {
+  color: #87baf5 !important;
+}
+
+/* =========================================================
+   ICON SURFACES / CHIPS
+   ========================================================= */
+
+:root[data-theme="dark"] .upload-icon,
+:root[data-theme="dark"] .upload-audio-title-icon,
+:root[data-theme="dark"] .stat-card-icon,
+:root[data-theme="dark"] .student-summary-icon,
+:root[data-theme="dark"] .student-subject-icon,
+:root[data-theme="dark"] .student-detail-icon,
+:root[data-theme="dark"] .student-detail-lecture-icon,
+:root[data-theme="dark"] .student-lecture-large-icon,
+:root[data-theme="dark"] .student-key-concept-icon,
+:root[data-theme="dark"] .student-qa-ask-icon,
+:root[data-theme="dark"] .student-qa-question-icon,
+:root[data-theme="dark"] .student-transcript-header-icon,
+:root[data-theme="dark"] .faculty-stat-icon,
+:root[data-theme="dark"] .faculty-dashboard-banner-icon,
+:root[data-theme="dark"] .details-lecture-icon,
+:root[data-theme="dark"] .student-progress-stat-icon,
+:root[data-theme="dark"] .student-qa-header-icon {
+  background: #21354d !important;
+  color: #91bdf0 !important;
+}
+
+:root[data-theme="dark"] .dashboard-chip,
+:root[data-theme="dark"] .subject-pill,
+:root[data-theme="dark"] .student-flashcards-count,
+:root[data-theme="dark"] .student-quiz-count,
+:root[data-theme="dark"] .badge {
+  background: #203650 !important;
+  color: #9bc7ff !important;
+  border-color: #34506f !important;
+}
+
+/* =========================================================
+   DASHBOARD / UPLOAD
+   ========================================================= */
+
+:root[data-theme="dark"] .faculty-dashboard-banner {
+  background: #182638 !important;
+  border-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .upload-drop-zone {
+  background: #111b29 !important;
+  border-color: #47617f !important;
+}
+
+:root[data-theme="dark"] .upload-drop-zone:hover {
+  background: #162438 !important;
+  border-color: #6ea4e4 !important;
+}
+
+:root[data-theme="dark"] .upload-drop-zone h3 {
+  color: var(--text-primary) !important;
+}
+
+/* =========================================================
+   STATUS / PROGRESS
+   ========================================================= */
+
+:root[data-theme="dark"] .lecture-status.processed,
+:root[data-theme="dark"] .details-status.processed {
+  background: var(--success-bg) !important;
+  color: var(--success-text) !important;
+}
+
+:root[data-theme="dark"] .lecture-status.processing,
+:root[data-theme="dark"] .details-status.processing {
+  background: var(--warning-bg) !important;
+  color: var(--warning-text) !important;
+}
+
+:root[data-theme="dark"] .lecture-status.failed {
+  background: var(--danger-bg) !important;
+  color: var(--danger-text) !important;
+}
+
+:root[data-theme="dark"] .progress-bar,
+:root[data-theme="dark"] .student-subject-progress-bar,
+:root[data-theme="dark"] .student-detail-progress-bar,
+:root[data-theme="dark"] .student-subject-progress-track,
+:root[data-theme="dark"] .quiz-progress,
+:root[data-theme="dark"] .flashcard-progress,
+:root[data-theme="dark"] .audio-progress {
+  background: #2a3749 !important;
+}
+
+/* =========================================================
+   EMPTY / NOTE SURFACES
+   ========================================================= */
+
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .empty-state-panel,
+:root[data-theme="dark"] .details-empty-state,
+:root[data-theme="dark"] .student-transcript-note,
+:root[data-theme="dark"] .student-summary-note,
+:root[data-theme="dark"] .student-key-concepts-note,
+:root[data-theme="dark"] .student-flashcards-note,
+:root[data-theme="dark"] .student-quiz-note,
+:root[data-theme="dark"] .student-qa-note {
+  background: #152335 !important;
+  border-color: #31465f !important;
+  color: var(--text-secondary) !important;
+}
+
+/* =========================================================
+   STUDENT MATERIALS / TRANSCRIPT / SUMMARY
+   ========================================================= */
+
+:root[data-theme="dark"] .student-material-tabs,
+:root[data-theme="dark"] .student-material-card-header,
+:root[data-theme="dark"] .student-subject-card-footer,
+:root[data-theme="dark"] .student-transcript-header,
+:root[data-theme="dark"] .student-transcript-block,
+:root[data-theme="dark"] .student-summary-card-header,
+:root[data-theme="dark"] .student-summary-points,
+:root[data-theme="dark"] .student-flashcard-answer,
+:root[data-theme="dark"] .student-qa-answer,
+:root[data-theme="dark"] .student-chat-reference {
+  border-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .student-material-tab {
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="dark"] .student-material-tab:hover {
+  background: #1b293b !important;
+  color: #b7d7ff !important;
+}
+
+:root[data-theme="dark"] .student-material-tab.active {
+  color: #8fc0fb !important;
+  border-bottom-color: #69a7f5 !important;
+}
+
+:root[data-theme="dark"] .student-material-content p,
+:root[data-theme="dark"] .student-transcript-block p,
+:root[data-theme="dark"] .student-summary-content > p,
+:root[data-theme="dark"] .student-summary-point,
+:root[data-theme="dark"] .student-key-concept-card p,
+:root[data-theme="dark"] .student-flashcard-answer p,
+:root[data-theme="dark"] .student-qa-answer p {
+  color: #b2c0d0 !important;
+}
+
+/* =========================================================
+   QUIZ
+   ========================================================= */
+
+:root[data-theme="dark"] .student-quiz-option,
+:root[data-theme="dark"] .quiz-question-card,
+:root[data-theme="dark"] .quiz-timer,
+:root[data-theme="dark"] .quiz-controls,
+:root[data-theme="dark"] .quiz-options-large button {
+  background: #172334 !important;
+  border-color: var(--border-color) !important;
+  color: #c7d3e2 !important;
+}
+
+:root[data-theme="dark"] .student-quiz-option:hover,
+:root[data-theme="dark"] .quiz-options-large button:hover {
+  background: #1f2d40 !important;
+  border-color: #4b6380 !important;
+}
+
+:root[data-theme="dark"] .student-quiz-option:has(input:checked),
+:root[data-theme="dark"] .quiz-options-large button.selected {
+  background: #203b5d !important;
+  border-color: #5b8dc7 !important;
+  color: #dcecff !important;
+}
+
+:root[data-theme="dark"] .quiz-reference {
+  background: #1b293b !important;
+  color: #a8b7c9 !important;
+}
+
+:root[data-theme="dark"] .hint-card {
+  background: #193a60 !important;
+  color: #ffffff !important;
+}
+
+/* =========================================================
+   FLASHCARDS
+   ========================================================= */
+
+:root[data-theme="dark"] .large-flashcard,
+:root[data-theme="dark"] .takeaway-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .large-flashcard p,
+:root[data-theme="dark"] .takeaway-card p,
+:root[data-theme="dark"] .outline-item p,
+:root[data-theme="dark"] .executive-summary p {
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="dark"] .difficulty-row button {
+  background: #253347 !important;
+  color: #d7e3ef !important;
+}
+
+:root[data-theme="dark"] .shuffle-button {
+  color: #dce8f5 !important;
+}
+
+/* =========================================================
+   Q&A CHAT
+   ========================================================= */
+
+:root[data-theme="dark"] .student-qa-chat {
+  background: #111a27 !important;
+  border-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .student-qa-chat-notice,
+:root[data-theme="dark"] .student-qa-input-area {
+  background: #151f2d !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="dark"] .student-chat-ai,
+:root[data-theme="dark"] .qa-message {
+  background: #1a2636 !important;
+  border-color: #304258 !important;
+  color: #d4dfeb !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .student-chat-user,
+:root[data-theme="dark"] .qa-message-row.user .qa-message {
+  background: #214f80 !important;
+  border-color: #214f80 !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .user-avatar {
+  background: #2b3d52 !important;
+  color: #e1e9f2 !important;
+}
+
+/* =========================================================
+   RESOURCE PAGES
+   ========================================================= */
+
+:root[data-theme="dark"] .resource-page,
+:root[data-theme="dark"] .resource-main,
+:root[data-theme="dark"] .resource-content {
+  background: var(--page-bg) !important;
+  color: var(--text-body) !important;
+}
+
+:root[data-theme="dark"] .resource-header,
+:root[data-theme="dark"] .resource-card-large,
+:root[data-theme="dark"] .transcript-panel,
+:root[data-theme="dark"] .side-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .resource-sidebar {
+  background: #121c2a !important;
+  border-right-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .resource-brand h2,
+:root[data-theme="dark"] .resource-title h1,
+:root[data-theme="dark"] .side-card h3 {
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="dark"] .resource-nav button {
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="dark"] .resource-nav button:hover,
+:root[data-theme="dark"] .resource-nav button.active {
+  background: #203249 !important;
+  color: #9fc8f8 !important;
+}
+
+:root[data-theme="dark"] .back-link {
+  background: #182638 !important;
+  border-color: var(--border-color) !important;
+  color: #91bdf0 !important;
+}
+
+:root[data-theme="dark"] .transcript-item p,
+:root[data-theme="dark"] .side-card p,
+:root[data-theme="dark"] .key-term small {
+  color: #b0bdcc !important;
+}
+
+:root[data-theme="dark"] .transcript-active {
+  background: #183553 !important;
+  border-left-color: #58a5df !important;
+}
+
+:root[data-theme="dark"] .key-term {
+  background: #1d2b3d !important;
+}
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+:root[data-theme="dark"] .login-page {
+  background: #0d1520 !important;
+}
+
+:root[data-theme="dark"] .login-card {
+  background: #172131 !important;
+  border-color: #2b394c !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28) !important;
+}
+
+:root[data-theme="dark"] .login-header h1,
+:root[data-theme="dark"] .login-brand h1 {
+  color: #eef4fb !important;
+}
+
+:root[data-theme="dark"] .login-header p,
+:root[data-theme="dark"] .login-brand p {
+  color: #aab8c8 !important;
+}
+
+:root[data-theme="dark"] .role-selector,
+:root[data-theme="dark"] .login-role-switch {
+  background: #111b29 !important;
+  border-color: #2f4157 !important;
+}
+
+:root[data-theme="dark"] .role-button,
+:root[data-theme="dark"] .login-role-switch button {
+  color: #aebdd0 !important;
+}
+
+:root[data-theme="dark"] .role-button.active,
+:root[data-theme="dark"] .login-role-switch button.active {
+  background: #295584 !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .login-error {
+  background: #3c2024 !important;
+  border-color: #75434a !important;
+  color: #f4a7ad !important;
+}
+
+/* =========================================================
+   PROGRESS / ANALYTICS STYLE SURFACES
+   ========================================================= */
+
+:root[data-theme="dark"] .student-subject-progress-item {
+  background: #1b2738 !important;
+}
+
+:root[data-theme="dark"] .student-subject-progress-item-top strong,
+:root[data-theme="dark"] .student-progress-circle-content strong,
+:root[data-theme="dark"] .student-progress-overall-stats strong,
+:root[data-theme="dark"] .student-progress-stat strong {
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="dark"] .activity-level,
+:root[data-theme="dark"] .activity-cell {
+  background: #283648;
+}
+
+:root[data-theme="dark"] .activity-level.level-1,
+:root[data-theme="dark"] .activity-cell.level-1 {
+  background: #294761;
+}
+
+:root[data-theme="dark"] .activity-level.level-2,
+:root[data-theme="dark"] .activity-cell.level-2 {
+  background: #33698d;
+}
+
+:root[data-theme="dark"] .activity-level.level-3,
+:root[data-theme="dark"] .activity-cell.level-3 {
+  background: #428bb7;
+}
+
+:root[data-theme="dark"] .activity-level.level-4,
+:root[data-theme="dark"] .activity-cell.level-4 {
+  background: #72b5df;
+}
+
+/* =========================================================
+   GENERIC INLINE-STYLE SAFETY OVERRIDES
+   These are needed because several current React pages use
+   inline light backgrounds/borders.
+   ========================================================= */
+
+:root[data-theme="dark"] .page [style*="background: #ffffff"],
+:root[data-theme="dark"] .page [style*="background:#ffffff"],
+:root[data-theme="dark"] .page [style*="background: white"],
+:root[data-theme="dark"] .page [style*="background:white"] {
+  background: var(--card-bg) !important;
+}
+
+:root[data-theme="dark"] .page [style*="background: #f7f9fc"],
+:root[data-theme="dark"] .page [style*="background:#f7f9fc"],
+:root[data-theme="dark"] .page [style*="background: #f7f8fb"],
+:root[data-theme="dark"] .page [style*="background: #f5f7fa"],
+:root[data-theme="dark"] .page [style*="background: #f5f9ff"],
+:root[data-theme="dark"] .page [style*="background: #eef4ff"],
+:root[data-theme="dark"] .page [style*="background: #eef4fb"],
+:root[data-theme="dark"] .page [style*="background: #eef2f7"],
+:root[data-theme="dark"] .page [style*="background: #fafafa"],
+:root[data-theme="dark"] .page [style*="background: #fafbfd"],
+:root[data-theme="dark"] .page [style*="background: #fafcff"] {
+  background: var(--surface-muted) !important;
+}
+
+:root[data-theme="dark"] .page [style*="color: #0f274f"],
+:root[data-theme="dark"] .page [style*="color: #102a43"],
+:root[data-theme="dark"] .page [style*="color: #172033"],
+:root[data-theme="dark"] .page [style*="color: #475569"],
+:root[data-theme="dark"] .page [style*="color: #454f5d"],
+:root[data-theme="dark"] .page [style*="color: #4b5565"] {
+  color: var(--text-body) !important;
+}
+
+:root[data-theme="dark"] .page [style*="color: #627188"],
+:root[data-theme="dark"] .page [style*="color: #64748b"],
+:root[data-theme="dark"] .page [style*="color: #667085"],
+:root[data-theme="dark"] .page [style*="color: #68778d"],
+:root[data-theme="dark"] .page [style*="color: #6c7c90"],
+:root[data-theme="dark"] .page [style*="color: #738094"] {
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="dark"] .page [style*="border: 1px solid #e1e7ef"],
+:root[data-theme="dark"] .page [style*="border: 1px solid #e2e8f0"],
+:root[data-theme="dark"] .page [style*="border: 1px solid #e4e9f1"],
+:root[data-theme="dark"] .page [style*="border: 1px solid #e5e7eb"],
+:root[data-theme="dark"] .page [style*="border: 1px solid #e5eaf0"],
+:root[data-theme="dark"] .page [style*="border: 1px solid #d7e6f8"],
+:root[data-theme="dark"] .page [style*="border: 1px solid #d9e5f2"] {
+  border-color: var(--border-color) !important;
+}
+
+/* Keep success/info status chips readable */
+:root[data-theme="dark"] .page [style*="background: #e9f7ef"],
+:root[data-theme="dark"] .page [style*="background: #ecfdf3"] {
+  background: var(--success-bg) !important;
+  color: var(--success-text) !important;
+}
+
+:root[data-theme="dark"] .page [style*="background: #e9f2ff"],
+:root[data-theme="dark"] .page [style*="background: #eaf2ff"],
+:root[data-theme="dark"] .page [style*="background: #edf4ff"] {
+  background: #203650 !important;
+  color: #9bc7ff !important;
+}
+
+/* =========================================================
+   FACULTY SETTINGS RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .faculty-settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .faculty-settings-card {
+    padding: 18px !important;
+  }
+
+  .faculty-theme-setting {
+    align-items: flex-start !important;
+  }
+
+  .faculty-settings-card .primary-action-button {
+    width: 100% !important;
+  }
+}
+/* =========================================================
+   DARK MODE — HARD-CODED SURFACE OVERRIDES
+   Fixes remaining white cards / rows / containers
+========================================================= */
+
+html.dark,
+body.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Main application surfaces */
+body.dark .page,
+body.dark .page-content,
+body.dark .main-content,
+body.dark .faculty-dashboard,
+body.dark .student-dashboard,
+[data-theme="dark"] .page,
+[data-theme="dark"] .page-content,
+[data-theme="dark"] .main-content {
+  background-color: #0f1724 !important;
+  color: #e8eef7 !important;
+}
+
+/* Cards and large containers */
+body.dark .card,
+body.dark .dashboard-card,
+body.dark .upload-form-card,
+body.dark .lecture-card,
+body.dark .subject-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .dashboard-card,
+[data-theme="dark"] .upload-form-card,
+[data-theme="dark"] .lecture-card,
+[data-theme="dark"] .subject-card {
+  background: #182334 !important;
+  border-color: #2c3a4d !important;
+  color: #e8eef7 !important;
+}
+
+/* Fix white backgrounds coming from nested dashboard content */
+body.dark .card > div,
+body.dark .card > section,
+[data-theme="dark"] .card > div,
+[data-theme="dark"] .card > section {
+  border-color: #2c3a4d;
+}
+
+/* Dashboard Recent Upload lecture rows */
+body.dark .recent-uploads,
+body.dark .recent-upload,
+body.dark .recent-upload-item,
+body.dark .lecture-row,
+body.dark .upload-row,
+[data-theme="dark"] .recent-uploads,
+[data-theme="dark"] .recent-upload,
+[data-theme="dark"] .recent-upload-item,
+[data-theme="dark"] .lecture-row,
+[data-theme="dark"] .upload-row {
+  background: #182334 !important;
+  border-color: #2c3a4d !important;
+  color: #e8eef7 !important;
+}
+
+/* Generic buttons used as clickable cards/rows */
+body.dark button.card,
+[data-theme="dark"] button.card {
+  background: #182334 !important;
+  color: #e8eef7 !important;
+  border-color: #2c3a4d !important;
+}
+
+/* Headings */
+body.dark h1,
+body.dark h2,
+body.dark h3,
+body.dark h4,
+body.dark h5,
+body.dark h6,
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+  color: #f5f8fc !important;
+}
+
+/* Normal text */
+body.dark p,
+body.dark span,
+body.dark label,
+body.dark strong,
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] label,
+[data-theme="dark"] strong {
+  border-color: #2c3a4d;
+}
+
+/* Muted text */
+body.dark .muted,
+[data-theme="dark"] .muted {
+  color: #9fb0c7 !important;
+}
+
+/* Eyebrow labels */
+body.dark .eyebrow,
+[data-theme="dark"] .eyebrow {
+  color: #9fb0c7 !important;
+}
+
+/* Lecture/title links — keep the LectAI blue visible */
+body.dark a,
+body.dark .lecture-title,
+[data-theme="dark"] a,
+[data-theme="dark"] .lecture-title {
+  color: #6ea8ff;
+}
+
+/* Inputs */
+body.dark input,
+body.dark textarea,
+body.dark select,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background: #111c2b !important;
+  color: #e8eef7 !important;
+  border-color: #34445a !important;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder,
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #75869d !important;
+}
+
+/* Sidebar */
+body.dark .sidebar,
+[data-theme="dark"] .sidebar {
+  background: #111c2b !important;
+  border-color: #2c3a4d !important;
+}
+
+body.dark .sidebar-link,
+[data-theme="dark"] .sidebar-link {
+  color: #b9c7d9 !important;
+}
+
+body.dark .sidebar-link:hover,
+[data-theme="dark"] .sidebar-link:hover {
+  background: #1c2a3d !important;
+  color: #ffffff !important;
+}
+
+body.dark .sidebar-link.active,
+[data-theme="dark"] .sidebar-link.active {
+  background: #243752 !important;
+  color: #ffffff !important;
+}
+
+/* Top navigation */
+body.dark .app-header,
+[data-theme="dark"] .app-header {
+  background: #111c2b !important;
+  border-color: #2c3a4d !important;
+  color: #f5f8fc !important;
+}
+
+/* Borders/dividers */
+body.dark hr,
+[data-theme="dark"] hr {
+  border-color: #2c3a4d !important;
+}
+
+/* Transcript/resource containers */
+body.dark .transcript-container,
+body.dark .transcript-card,
+body.dark .transcript-row,
+body.dark .resource-card,
+[data-theme="dark"] .transcript-container,
+[data-theme="dark"] .transcript-card,
+[data-theme="dark"] .transcript-row,
+[data-theme="dark"] .resource-card {
+  background: #182334 !important;
+  color: #e8eef7 !important;
+  border-color: #2c3a4d !important;
+}
+
+/* Highlighted transcript section */
+body.dark .transcript-row.active,
+body.dark .transcript-row.highlighted,
+[data-theme="dark"] .transcript-row.active,
+[data-theme="dark"] .transcript-row.highlighted {
+  background: #19304a !important;
+}
+
+/* Tables */
+body.dark table,
+body.dark th,
+body.dark td,
+[data-theme="dark"] table,
+[data-theme="dark"] th,
+[data-theme="dark"] td {
+  background: #182334;
+  color: #e8eef7;
+  border-color: #2c3a4d !important;
+}
+
+/* Modal surfaces */
+body.dark .modal,
+body.dark .modal-content,
+[data-theme="dark"] .modal,
+[data-theme="dark"] .modal-content {
+  background: #182334 !important;
+  color: #e8eef7 !important;
+  border-color: #2c3a4d !important;
+}
+
+/* Smooth theme switching */
+body,
+.page,
+.page-content,
+.main-content,
+.sidebar,
+.app-header,
+.card,
+input,
+textarea,
+select,
+button {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+:root {
+  --page-bg: #f5f7fb;
+  --card-bg: #ffffff;
+  --surface-bg: #ffffff;
+  --surface-muted: #f8fafc;
+  --text-primary: #0f274f;
+  --text-secondary: #627188;
+  --border-color: #e2e8f0;
+}
+
+[data-theme="dark"] {
+  --page-bg: #0f1928;
+  --card-bg: #182436;
+  --surface-bg: #182436;
+  --surface-muted: #1d2b3f;
+  --text-primary: #f8fafc;
+  --text-secondary: #a9bdd7;
+  --border-color: #304158;
+}
+
+
+/* =========================================================
+   FINAL DARK MODE FIX — INLINE LIGHT SURFACES
+   This block intentionally comes LAST.
+   React inline styles are often serialized by the browser
+   as rgb(...), so previous #ffffff attribute selectors do
+   not catch them.
+   ========================================================= */
+
+/* Ensure the application itself is fully dark */
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] #root,
+:root[data-theme="dark"] .app-layout,
+:root[data-theme="dark"] .main-content,
+:root[data-theme="dark"] .page-content,
+:root[data-theme="dark"] .page {
+  background: #0f1928 !important;
+  color: #e8eef7 !important;
+}
+
+/* Keep normal card surfaces dark */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] button.card,
+:root[data-theme="dark"] .faculty-stat-card,
+:root[data-theme="dark"] .dashboard-panel,
+:root[data-theme="dark"] .lecture-card,
+:root[data-theme="dark"] .student-subject-card,
+:root[data-theme="dark"] .student-quiz-card,
+:root[data-theme="dark"] .student-flashcard,
+:root[data-theme="dark"] .student-summary-card,
+:root[data-theme="dark"] .student-transcript-card,
+:root[data-theme="dark"] .student-key-concept-card,
+:root[data-theme="dark"] .details-lecture-card,
+:root[data-theme="dark"] .resource-card-large,
+:root[data-theme="dark"] .transcript-panel,
+:root[data-theme="dark"] .side-card,
+:root[data-theme="dark"] .quiz-question-card,
+:root[data-theme="dark"] .quiz-controls,
+:root[data-theme="dark"] .quiz-timer,
+:root[data-theme="dark"] .large-flashcard {
+  background: #182436 !important;
+  border-color: #304158 !important;
+  color: #e8eef7 !important;
+}
+
+/* 
+   IMPORTANT:
+   React converts inline "#fff" / "#ffffff" / light hex values
+   to rgb(...) in the rendered style attribute. Catch those
+   actual browser values here.
+*/
+:root[data-theme="dark"] .page [style*="background: rgb(255, 255, 255)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(255, 255, 255)"],
+:root[data-theme="dark"] .page [style*="background: white"],
+:root[data-theme="dark"] .page [style*="background-color: white"] {
+  background: #182436 !important;
+  background-color: #182436 !important;
+  border-color: #304158 !important;
+}
+
+/* Near-white / gray inline surfaces */
+:root[data-theme="dark"] .page [style*="background: rgb(248, 250, 252)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(248, 250, 252)"],
+:root[data-theme="dark"] .page [style*="background: rgb(247, 249, 252)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(247, 249, 252)"],
+:root[data-theme="dark"] .page [style*="background: rgb(250, 250, 250)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(250, 250, 250)"],
+:root[data-theme="dark"] .page [style*="background: rgb(250, 251, 253)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(250, 251, 253)"],
+:root[data-theme="dark"] .page [style*="background: rgb(241, 245, 249)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(241, 245, 249)"],
+:root[data-theme="dark"] .page [style*="background: rgb(238, 242, 247)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(238, 242, 247)"],
+:root[data-theme="dark"] .page [style*="background: rgb(238, 244, 255)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(238, 244, 255)"],
+:root[data-theme="dark"] .page [style*="background: rgb(234, 242, 255)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(234, 242, 255)"] {
+  background: #1d2b3f !important;
+  background-color: #1d2b3f !important;
+  border-color: #304158 !important;
+}
+
+/* Catch common inline border colors after browser serialization */
+:root[data-theme="dark"] .page [style*="border: 1px solid rgb(226, 232, 240)"],
+:root[data-theme="dark"] .page [style*="border: 1px solid rgb(228, 233, 241)"],
+:root[data-theme="dark"] .page [style*="border: 1px solid rgb(229, 231, 235)"],
+:root[data-theme="dark"] .page [style*="border: 1px solid rgb(225, 231, 239)"] {
+  border-color: #304158 !important;
+}
+
+/* Dashboard recent-upload rows and similar nested row containers */
+:root[data-theme="dark"] .faculty-page .card > button,
+:root[data-theme="dark"] .faculty-page .card > div[role="button"],
+:root[data-theme="dark"] .faculty-page .card > div[tabindex],
+:root[data-theme="dark"] .faculty-page .card > section,
+:root[data-theme="dark"] .faculty-dashboard .card > button,
+:root[data-theme="dark"] .faculty-dashboard .card > div[role="button"] {
+  border-color: #304158 !important;
+}
+
+/* Analytics inner stat / list surfaces */
+:root[data-theme="dark"] .faculty-analytics [style*="background: rgb(255, 255, 255)"],
+:root[data-theme="dark"] .faculty-analytics [style*="background-color: rgb(255, 255, 255)"],
+:root[data-theme="dark"] .faculty-analytics [style*="background: rgb(248, 250, 252)"],
+:root[data-theme="dark"] .faculty-analytics [style*="background-color: rgb(248, 250, 252)"],
+:root[data-theme="dark"] .faculty-analytics [style*="background: rgb(241, 245, 249)"],
+:root[data-theme="dark"] .faculty-analytics [style*="background-color: rgb(241, 245, 249)"] {
+  background: #1d2b3f !important;
+  background-color: #1d2b3f !important;
+  color: #e8eef7 !important;
+  border-color: #304158 !important;
+}
+
+/* Make text readable on dark surfaces */
+:root[data-theme="dark"] .page h1,
+:root[data-theme="dark"] .page h2,
+:root[data-theme="dark"] .page h3,
+:root[data-theme="dark"] .page h4,
+:root[data-theme="dark"] .page strong {
+  color: #f5f8fc !important;
+}
+
+:root[data-theme="dark"] .page .muted {
+  color: #a9bdd7 !important;
+}
+
+/* Preserve blue clickable lecture titles */
+:root[data-theme="dark"] .page a,
+:root[data-theme="dark"] .page .lecture-title,
+:root[data-theme="dark"] .page [style*="color: rgb(31, 111, 235)"],
+:root[data-theme="dark"] .page [style*="color: rgb(37, 99, 235)"] {
+  color: #73adff !important;
+}
+
+/* Preserve colored status chips instead of turning them dark */
+:root[data-theme="dark"] .lecture-status.processed,
+:root[data-theme="dark"] .details-status.processed {
+  background: #19382b !important;
+  color: #8ee0b1 !important;
+}
+
+:root[data-theme="dark"] .lecture-status.processing,
+:root[data-theme="dark"] .details-status.processing {
+  background: #40351d !important;
+  color: #f3cf76 !important;
+}
+
+:root[data-theme="dark"] .lecture-status.failed {
+  background: #412326 !important;
+  color: #f3a0a5 !important;
+}
+
+/* Broadcast / success inline chips used by current faculty pages */
+:root[data-theme="dark"] .page [style*="background: rgb(234, 247, 239)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(234, 247, 239)"],
+:root[data-theme="dark"] .page [style*="background: rgb(236, 253, 243)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(236, 253, 243)"] {
+  background: #19382b !important;
+  background-color: #19382b !important;
+  color: #8ee0b1 !important;
+}
+
+/* Processing / warning inline chips */
+:root[data-theme="dark"] .page [style*="background: rgb(255, 246, 223)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(255, 246, 223)"] {
+  background: #40351d !important;
+  background-color: #40351d !important;
+  color: #f3cf76 !important;
+}
+
+/* Draft neutral chips */
+:root[data-theme="dark"] .page [style*="background: rgb(238, 242, 247)"],
+:root[data-theme="dark"] .page [style*="background-color: rgb(238, 242, 247)"] {
+  background: #263548 !important;
+  background-color: #263548 !important;
+  color: #b8c7d9 !important;
+}
+
+/* Input and selector surfaces */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  background: #111c2b !important;
+  color: #e8eef7 !important;
+  border-color: #34445a !important;
+}
+
+/* Resource / transcript / quiz / Q&A inner surfaces */
+:root[data-theme="dark"] .transcript-item,
+:root[data-theme="dark"] .key-term,
+:root[data-theme="dark"] .student-qa-answer,
+:root[data-theme="dark"] .student-quiz-option,
+:root[data-theme="dark"] .quiz-reference,
+:root[data-theme="dark"] .student-subject-progress-item {
+  border-color: #304158 !important;
+}
+
+:root[data-theme="dark"] .key-term,
+:root[data-theme="dark"] .student-qa-answer,
+:root[data-theme="dark"] .quiz-reference,
+:root[data-theme="dark"] .student-subject-progress-item {
+  background: #1d2b3f !important;
+}
+
+/* Login remains themed too */
+:root[data-theme="dark"] .login-page {
+  background: #0f1928 !important;
+}
+
+:root[data-theme="dark"] .login-card {
+  background: #182436 !important;
+  border-color: #304158 !important;
+}
+
+/* Smooth final transition */
+body,
+.app-layout,
+.main-content,
+.page-content,
+.sidebar,
+.app-header,
+.card,
+input,
+textarea,
+select,
+button {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}

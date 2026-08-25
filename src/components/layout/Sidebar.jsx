@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Upload,
@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 
 function Sidebar({ role }) {
+  const navigate = useNavigate();
+
   const isFaculty = role === "faculty";
 
   const menuItems = isFaculty
@@ -18,7 +20,7 @@ function Sidebar({ role }) {
           icon: LayoutDashboard,
         },
         {
-          label: "Uploads",
+          label: "Upload",
           path: "/faculty/uploads",
           icon: Upload,
         },
@@ -58,13 +60,61 @@ function Sidebar({ role }) {
 
   return (
     <aside className="sidebar">
+      {/* =========================
+          LOGO
+      ========================= */}
+
       <div className="sidebar-logo">
-        <div className="logo-icon">🎓</div>
+        <div className="logo-icon">L</div>
+
         <div>
-          <h2>Lec-AI</h2>
-          <span>{isFaculty ? "Faculty Portal" : "Student Portal"}</span>
+          <h2>LectaAI</h2>
+
+          <span>ACADEMIC PORTAL</span>
         </div>
       </div>
+
+      {/* =========================
+          FACULTY UPLOAD BUTTON
+      ========================= */}
+
+      {isFaculty && (
+        <div
+          style={{
+            padding: "7px 10px 5px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => navigate("/faculty/uploads/new")}
+            style={{
+              width: "100%",
+              minHeight: 38,
+              border: "none",
+              borderRadius: 8,
+              background: "#2f76d2",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: "7px 10px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 2px 5px rgba(23, 59, 109, 0.14)",
+            }}
+          >
+            <Upload size={16} />
+
+            <span>Upload Lecture</span>
+          </button>
+        </div>
+      )}
+
+      {/* =========================
+          NAVIGATION
+      ========================= */}
 
       <nav className="sidebar-nav">
         {menuItems.map((item) => {
@@ -78,7 +128,8 @@ function Sidebar({ role }) {
                 `sidebar-link ${isActive ? "active" : ""}`
               }
             >
-              <Icon size={20} />
+              <Icon size={18} />
+
               <span>{item.label}</span>
             </NavLink>
           );
