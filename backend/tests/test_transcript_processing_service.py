@@ -399,3 +399,74 @@ def test_chunk_retries_exhausted_marks_failed_and_halts_later_chunks(orchestrati
     assert t_in_db.corrected_text is None
     assert t_in_db.segment_timestamps_json is None
     assert "Persistent Groq 500 Internal Error" in t_in_db.error_message
+
+
+# =====================================================================
+# Service-Level Tests for update_corrected_transcript
+# =====================================================================
+
+def test_update_corrected_transcript_not_found(orchestration_db_session):
+    session = orchestration_db_session["session"]
+    result, error = transcript_processing_service.update_corrected_transcript(
+        session, lecture_id=9999, corrected_text="Updated text"
+    )
+    assert result is None
+    assert error == "TRANSCRIPT_NOT_FOUND"
+
+
+def test_update_corrected_transcript_not_completed(orchestration_db_session):
+    session = orchestration_db_session["session"]
+    lec = orchestration_db_session["lecture"]
+    t = orchestration_db_session["transcript"]
+
+    # Status is "uploaded"
+    result, error = transcript_processing_service.update_corrected_transcript(
+        session, lecture_id=lec.id, corrected_text="Updated text"
+    )
+    assert result is None
+    assert error == "TRANSCRIPT_NOT_READY"
+
+    # Status is "processing"
+    t.status = "processing"
+    session.commit()
+    result, error = transcript_processing_service.update_corrected_transcript(
+        session, lecture_id=lec.id, corrected_text="Updated text"
+    )
+    assert result is None
+    assert error == "TRANSCRIPT_NOT_READY"
+
+    # Status is "failed"
+    t.status = "failed"
+    session.commit()
+    result, error = transcript_processing_service.update_corrected_transcript(
+        session, lecture_id=lec.id, corrected_text="Updated text"
+    )
+    assert result is None
+    assert error == "TRANSCRIPT_NOT_READY"
+
+
+def test_update_corrected_transcript_success_and_invariants(orchestration_db_session):
+    session = orchestration_db_session["session"]
+    lec = orchestration_db_session["lecture"]
+    t = orchestration_db_session["transcript"]
+
+    sample_timestamps = json.dumps([{"id": 0, "start": 0.0, "end": 5.0, "text": "Raw text"}])
+    t.raw_text = "Original raw ASR transcript text."
+    t.segment_timestamps_json = sample_timestamps
+    t.status = "completed"
+    t.corrected_text = None
+    session.commit()
+
+    updated_t, error = transcript_processing_service.update_corrected_transcript(
+        session, lecture_id=lec.id, corrected_text="Faculty corrected text."
+    )
+
+    assert error is None
+    assert updated_t is not None
+    assert updated_t.corrected_text == "Faculty corrected text."
+
+    # Direct invariant assertions
+    assert updated_t.raw_text == "Original raw ASR transcript text."
+    assert updated_t.segment_timestamps_json == sample_timestamps
+    assert updated_t.status == "completed"
+    assert lec.status == "uploaded"

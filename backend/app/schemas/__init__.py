@@ -9,7 +9,7 @@ from app.schemas.academic import (
     StudentResponse,
 )
 from app.schemas.lecture import LectureResponse
-from app.schemas.transcript import TranscriptResponse
+from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
 
 __all__ = [
     "LoginRequest",
@@ -23,4 +23,5 @@ __all__ = [
     "StudentResponse",
     "LectureResponse",
     "TranscriptResponse",
+    "TranscriptUpdate",
 ]

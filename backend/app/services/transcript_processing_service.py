@@ -1,5 +1,6 @@
 import json
 import time
+from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.lecture import Lecture
 from app.models.transcript import Transcript
@@ -119,3 +120,26 @@ def process_lecture_transcription(
             transcript.error_message = str(e)
             db.commit()
         raise TranscriptProcessingError(f"Transcription processing failed for lecture {lecture_id}: {str(e)}") from e
+
+
+def update_corrected_transcript(
+    db: Session,
+    lecture_id: int,
+    corrected_text: str,
+) -> Tuple[Optional[Transcript], Optional[str]]:
+    """Update corrected_text for a completed transcript without mutating raw_text, timestamps, or statuses.
+
+    Returns (transcript, None) on success, or (None, error_code) on failure.
+    Possible error codes: "TRANSCRIPT_NOT_FOUND", "TRANSCRIPT_NOT_READY".
+    """
+    transcript = db.query(Transcript).filter(Transcript.lecture_id == lecture_id).first()
+    if not transcript:
+        return None, "TRANSCRIPT_NOT_FOUND"
+
+    if transcript.status != "completed":
+        return None, "TRANSCRIPT_NOT_READY"
+
+    transcript.corrected_text = corrected_text
+    db.commit()
+    db.refresh(transcript)
+    return transcript, None

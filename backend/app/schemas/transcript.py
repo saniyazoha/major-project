@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
 
 
@@ -14,3 +14,14 @@ class TranscriptResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TranscriptUpdate(BaseModel):
+    corrected_text: str
+
+    @field_validator("corrected_text")
+    @classmethod
+    def validate_corrected_text(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Corrected text cannot be empty or whitespace only")
+        return v

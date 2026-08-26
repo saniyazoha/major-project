@@ -160,6 +160,42 @@ def test_faculty_triggers_transcription_on_own_lecture_success(transcript_route_
     assert data == {"lecture_id": lec1.id, "status": "processing"}
 
 
+def test_transcribe_completed_transcript_rejected_409(transcript_route_setup, monkeypatch):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    mock_process = MagicMock()
+    monkeypatch.setattr(transcript_processing_service, "process_lecture_transcription", mock_process)
+
+    sample_timestamps = json.dumps([{"id": 0, "start": 0.0, "end": 5.0, "text": "Raw text"}])
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw uncorrected text.",
+        corrected_text="Faculty corrected text.",
+        segment_timestamps_json=sample_timestamps,
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    response = client.post(f"/lectures/{lec1.id}/transcribe", headers=headers)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Transcript already completed; re-transcription not supported in this phase"
+
+    # Assert database fields remain exactly unchanged
+    session.refresh(t)
+    assert t.raw_text == "Raw uncorrected text."
+    assert t.corrected_text == "Faculty corrected text."
+    assert t.segment_timestamps_json == sample_timestamps
+    assert t.status == "completed"
+
+    # Assert background task was NOT enqueued
+    mock_process.assert_not_called()
+
+
 def test_faculty_triggers_transcription_on_other_faculty_lecture_forbidden(transcript_route_setup):
     client = transcript_route_setup["client"]
     lec1 = transcript_route_setup["lec1"]  # Owned by Fac 1
@@ -284,3 +320,229 @@ def test_non_enrolled_student_fetches_transcript_forbidden(transcript_route_setu
     response = client.get(f"/lectures/{lec1.id}/transcript", headers=headers)
     assert response.status_code == 403
     assert response.json()["detail"] == "Access denied for this lecture"
+
+
+# =====================================================================
+# Phase 2C — Faculty Transcript Review (Save Corrections) Tests (PATCH)
+# =====================================================================
+
+def test_faculty_saves_transcript_correction_success(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    sample_timestamps = json.dumps([{"id": 0, "start": 0.0, "end": 5.0, "text": "Raw text"}])
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw uncorrected ASR transcript text.",
+        corrected_text=None,
+        segment_timestamps_json=sample_timestamps,
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    correction_payload = {"corrected_text": "Faculty reviewed and corrected transcript text."}
+    response = client.patch(f"/lectures/{lec1.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["lecture_id"] == lec1.id
+    assert data["raw_text"] == "Raw uncorrected ASR transcript text."
+    assert data["corrected_text"] == "Faculty reviewed and corrected transcript text."
+    assert data["segment_timestamps_json"] == sample_timestamps
+    assert data["status"] == "completed"
+    assert lec1.status == "uploaded"
+
+
+def test_faculty_saves_transcript_correction_forbidden_other_faculty(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]  # Owned by Fac 1
+    headers = transcript_route_setup["fac2_headers"]  # Fac 2 attempting edit
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw ASR transcript.",
+        corrected_text=None,
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    correction_payload = {"corrected_text": "Unauthorized edit attempt."}
+    response = client.patch(f"/lectures/{lec1.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Access denied for this lecture"
+
+    # Verify protected fields in DB unchanged
+    session.refresh(t)
+    assert t.corrected_text is None
+    assert t.raw_text == "Raw ASR transcript."
+
+
+def test_student_cannot_save_transcript_correction(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["stu1_headers"]
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw ASR transcript.",
+        corrected_text=None,
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    correction_payload = {"corrected_text": "Student edit attempt."}
+    response = client.patch(f"/lectures/{lec1.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Faculty access required"
+
+    session.refresh(t)
+    assert t.corrected_text is None
+
+
+def test_transcript_status_processing_rejected_409(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text=None,
+        corrected_text=None,
+        status="processing"
+    )
+    session.add(t)
+    session.commit()
+
+    correction_payload = {"corrected_text": "Premature edit attempt."}
+    response = client.patch(f"/lectures/{lec1.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Transcript is not completed and cannot be edited"
+
+    session.refresh(t)
+    assert t.status == "processing"
+    assert t.corrected_text is None
+
+
+def test_transcript_status_failed_rejected_409(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text=None,
+        corrected_text=None,
+        status="failed",
+        error_message="Groq timeout"
+    )
+    session.add(t)
+    session.commit()
+
+    correction_payload = {"corrected_text": "Failed transcript edit attempt."}
+    response = client.patch(f"/lectures/{lec1.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Transcript is not completed and cannot be edited"
+
+    session.refresh(t)
+    assert t.status == "failed"
+    assert t.corrected_text is None
+
+
+def test_save_correction_when_transcript_not_found_rejected_404(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    lec2 = transcript_route_setup["lec2"]
+    headers = transcript_route_setup["fac2_headers"]
+
+    correction_payload = {"corrected_text": "Missing transcript edit attempt."}
+    response = client.patch(f"/lectures/{lec2.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Transcript not found for this lecture"
+
+
+def test_save_correction_empty_string_rejected_422(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw ASR text.",
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    correction_payload = {"corrected_text": ""}
+    response = client.patch(f"/lectures/{lec1.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 422
+
+
+def test_save_correction_whitespace_only_rejected_422(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw ASR text.",
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    correction_payload = {"corrected_text": "    "}
+    response = client.patch(f"/lectures/{lec1.id}/transcript", json=correction_payload, headers=headers)
+
+    assert response.status_code == 422
+
+
+def test_sequential_corrections_overwrites_previous(transcript_route_setup):
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    sample_timestamps = json.dumps([{"id": 0, "start": 0.0, "end": 5.0, "text": "Raw text"}])
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw uncorrected ASR text.",
+        corrected_text=None,
+        segment_timestamps_json=sample_timestamps,
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    # First correction
+    payload1 = {"corrected_text": "First correction draft."}
+    res1 = client.patch(f"/lectures/{lec1.id}/transcript", json=payload1, headers=headers)
+    assert res1.status_code == 200
+    assert res1.json()["corrected_text"] == "First correction draft."
+    assert res1.json()["raw_text"] == "Raw uncorrected ASR text."
+
+    # Second correction
+    payload2 = {"corrected_text": "Final polished correction."}
+    res2 = client.patch(f"/lectures/{lec1.id}/transcript", json=payload2, headers=headers)
+    assert res2.status_code == 200
+    assert res2.json()["corrected_text"] == "Final polished correction."
+    assert res2.json()["raw_text"] == "Raw uncorrected ASR text."
+    assert res2.json()["segment_timestamps_json"] == sample_timestamps
+    assert res2.json()["status"] == "completed"
+    assert lec1.status == "uploaded"

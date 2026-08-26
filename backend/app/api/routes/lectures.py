@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.dependencies import get_current_user, require_faculty
 from app.schemas.lecture import LectureResponse
-from app.schemas.transcript import TranscriptResponse
+from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
 from app.models.transcript import Transcript
 from app.services import lecture_service, storage_service, transcript_processing_service
 
@@ -147,6 +147,13 @@ def trigger_transcription(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
         )
 
+    transcript = db.query(Transcript).filter(Transcript.lecture_id == lecture_id).first()
+    if transcript and transcript.status == "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Transcript already completed; re-transcription not supported in this phase",
+        )
+
     background_tasks.add_task(
         transcript_processing_service.process_lecture_transcription,
         db,
@@ -181,6 +188,47 @@ def get_transcript(
     if not transcript:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found for this lecture"
+        )
+
+    return transcript
+
+
+@router.patch("/{lecture_id}/transcript", response_model=TranscriptResponse, status_code=status.HTTP_200_OK)
+def update_transcript_correction(
+    lecture_id: int,
+    body: TranscriptUpdate,
+    db: Session = Depends(get_db),
+    current_faculty: dict = Depends(require_faculty),
+):
+    """Faculty endpoint to review and save corrected transcript text for a completed lecture transcript via PATCH."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_faculty["user_id"],
+        role="faculty",
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    transcript, err = transcript_processing_service.update_corrected_transcript(
+        db,
+        lecture_id=lecture_id,
+        corrected_text=body.corrected_text,
+    )
+
+    if err == "TRANSCRIPT_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found for this lecture"
+        )
+    if err == "TRANSCRIPT_NOT_READY":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Transcript is not completed and cannot be edited"
         )
 
     return transcript
