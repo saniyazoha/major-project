@@ -1,3 +1,4 @@
+import json
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -74,9 +75,12 @@ def test_transcript_model_creation_and_relationship(transcript_db_session):
     assert lec.transcript is None
 
     # Create transcript
+    timestamps_sample = json.dumps([{"id": 0, "start": 0.0, "end": 5.0, "text": "Hello"}])
     t = Transcript(
         lecture_id=lec.id,
-        transcript_text="Hello and welcome to operating systems class.",
+        raw_text="Hello and welcome to operating systems class.",
+        corrected_text=None,
+        segment_timestamps_json=timestamps_sample,
         status="completed"
     )
     session.add(t)
@@ -87,7 +91,9 @@ def test_transcript_model_creation_and_relationship(transcript_db_session):
     assert reloaded_lec.transcript is not None
     assert reloaded_lec.transcript.id == t.id
     assert reloaded_lec.transcript.lecture_id == lec.id
-    assert reloaded_lec.transcript.transcript_text == "Hello and welcome to operating systems class."
+    assert reloaded_lec.transcript.raw_text == "Hello and welcome to operating systems class."
+    assert reloaded_lec.transcript.corrected_text is None
+    assert reloaded_lec.transcript.segment_timestamps_json == timestamps_sample
     assert reloaded_lec.transcript.status == "completed"
     assert reloaded_lec.transcript.error_message is None
     assert reloaded_lec.transcript.created_at is not None
@@ -100,7 +106,7 @@ def test_one_transcript_per_lecture_uniqueness(transcript_db_session):
 
     t1 = Transcript(
         lecture_id=lec.id,
-        transcript_text="First transcript",
+        raw_text="First transcript",
         status="completed"
     )
     session.add(t1)
@@ -109,7 +115,7 @@ def test_one_transcript_per_lecture_uniqueness(transcript_db_session):
     # Attempting to add a second transcript for the same lecture must raise IntegrityError
     t2 = Transcript(
         lecture_id=lec.id,
-        transcript_text="Second transcript attempting duplicate",
+        raw_text="Second transcript attempting duplicate",
         status="completed"
     )
     session.add(t2)
@@ -132,7 +138,9 @@ def test_transcript_failed_state_and_error_message(transcript_db_session):
 
     saved_transcript = session.query(Transcript).filter(Transcript.lecture_id == lec.id).first()
     assert saved_transcript.status == "failed"
-    assert saved_transcript.transcript_text is None
+    assert saved_transcript.raw_text is None
+    assert saved_transcript.corrected_text is None
+    assert saved_transcript.segment_timestamps_json is None
     assert saved_transcript.error_message == "Groq ASR API request timed out after 30 seconds"
 
 
@@ -142,7 +150,7 @@ def test_transcript_cascade_delete_with_lecture(transcript_db_session):
 
     t = Transcript(
         lecture_id=lec.id,
-        transcript_text="Cascade delete test transcript",
+        raw_text="Cascade delete test transcript",
         status="completed"
     )
     session.add(t)

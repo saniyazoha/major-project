@@ -19,7 +19,9 @@ class Transcript(Base):
         nullable=False,
         index=True,
     )
-    transcript_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    raw_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    corrected_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    segment_timestamps_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="uploaded")
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -1,3 +1,4 @@
+import json
 import pytest
 import time
 from unittest.mock import MagicMock
@@ -116,13 +117,22 @@ def test_status_set_to_processing_before_external_work(orchestration_db_session,
     monkeypatch.setattr(
         transcription_service,
         "translate_audio_to_english",
-        lambda audio_file, filename: {"text": "Process scheduling lecture transcript."}
+        lambda audio_file, filename: {
+            "text": "Process scheduling lecture transcript.",
+            "segments": [{"id": 0, "start": 0.0, "end": 10.0, "text": "Process scheduling lecture transcript."}]
+        }
     )
 
     result = transcript_processing_service.process_lecture_transcription(session, lec.id, backoff_seconds=0.0)
     assert observed_status_during_download == ["processing"]
     assert result.status == "completed"
-    assert result.transcript_text == "Process scheduling lecture transcript."
+    assert result.raw_text == "Process scheduling lecture transcript."
+    assert result.corrected_text is None
+    assert result.segment_timestamps_json is not None
+    timestamps = json.loads(result.segment_timestamps_json)
+    assert len(timestamps) == 1
+    assert timestamps[0]["start"] == 0.0
+    assert timestamps[0]["end"] == 10.0
 
 
 def test_successful_single_chunk_processing(orchestration_db_session, monkeypatch):
@@ -144,17 +154,27 @@ def test_successful_single_chunk_processing(orchestration_db_session, monkeypatc
     monkeypatch.setattr(
         transcription_service,
         "translate_audio_to_english",
-        lambda audio_file, filename: {"text": "Single chunk translation complete."}
+        lambda audio_file, filename: {
+            "text": "Single chunk translation complete.",
+            "segments": [{"id": 0, "start": 1.5, "end": 12.0, "text": "Single chunk translation complete."}]
+        }
     )
 
     transcript = transcript_processing_service.process_lecture_transcription(session, lec.id, backoff_seconds=0.0)
 
     assert transcript.status == "completed"
-    assert transcript.transcript_text == "Single chunk translation complete."
+    assert transcript.raw_text == "Single chunk translation complete."
+    assert transcript.corrected_text is None
     assert transcript.error_message is None
+    assert transcript.segment_timestamps_json is not None
+
+    segments = json.loads(transcript.segment_timestamps_json)
+    assert len(segments) == 1
+    assert segments[0]["start"] == 1.5
+    assert segments[0]["end"] == 12.0
 
 
-def test_successful_multi_chunk_processing_combines_in_order(orchestration_db_session, monkeypatch):
+def test_successful_multi_chunk_processing_combines_in_order_with_offset_timestamps(orchestration_db_session, monkeypatch):
     session = orchestration_db_session["session"]
     lec = orchestration_db_session["lecture"]
 
@@ -174,11 +194,22 @@ def test_successful_multi_chunk_processing_combines_in_order(orchestration_db_se
     def mock_translate(audio_file, filename):
         translation_calls.append(filename)
         if filename == "chunk_0.mp3":
-            return {"text": "First section on CPU cycles."}
+            return {
+                "text": "First section on CPU cycles.",
+                "segments": [{"id": 0, "start": 0.5, "end": 10.0, "text": "First section on CPU cycles."}]
+            }
         elif filename == "chunk_1.mp3":
-            return {"text": "Second section on round robin queues."}
+            # Chunk 1 starts at 170.0s. Segment start 5.0 -> global start 175.0, end 15.0 -> global end 185.0
+            return {
+                "text": "Second section on round robin queues.",
+                "segments": [{"id": 0, "start": 5.0, "end": 15.0, "text": "Second section on round robin queues."}]
+            }
         else:
-            return {"text": "Third section on context switching."}
+            # Chunk 2 starts at 340.0s. Segment start 2.5 -> global start 342.5, end 12.5 -> global end 352.5
+            return {
+                "text": "Third section on context switching.",
+                "segments": [{"id": 0, "start": 2.5, "end": 12.5, "text": "Third section on context switching."}]
+            }
 
     monkeypatch.setattr(transcription_service, "translate_audio_to_english", mock_translate)
 
@@ -186,8 +217,29 @@ def test_successful_multi_chunk_processing_combines_in_order(orchestration_db_se
 
     assert translation_calls == ["chunk_0.mp3", "chunk_1.mp3", "chunk_2.mp3"]
     assert transcript.status == "completed"
-    assert transcript.transcript_text == "First section on CPU cycles. Second section on round robin queues. Third section on context switching."
+    assert transcript.raw_text == "First section on CPU cycles. Second section on round robin queues. Third section on context switching."
+    assert transcript.corrected_text is None
     assert transcript.error_message is None
+
+    # Verify offset arithmetic in multi-chunk timestamps
+    assert transcript.segment_timestamps_json is not None
+    segments = json.loads(transcript.segment_timestamps_json)
+    assert len(segments) == 3
+
+    # Chunk 0: 0.0 + 0.5 = 0.5, 0.0 + 10.0 = 10.0
+    assert segments[0]["start"] == 0.5
+    assert segments[0]["end"] == 10.0
+
+    # Chunk 1: 170.0 + 5.0 = 175.0, 170.0 + 15.0 = 185.0
+    assert segments[1]["start"] == 175.0
+    assert segments[1]["end"] == 185.0
+
+    # Chunk 2: 340.0 + 2.5 = 342.5, 340.0 + 12.5 = 352.5
+    assert segments[2]["start"] == 342.5
+    assert segments[2]["end"] == 352.5
+
+    # Verify chronological ordering
+    assert segments[0]["start"] < segments[1]["start"] < segments[2]["start"]
 
 
 def test_storage_failure_marks_transcript_failed(orchestration_db_session, monkeypatch):
@@ -206,6 +258,9 @@ def test_storage_failure_marks_transcript_failed(orchestration_db_session, monke
 
     t_in_db = session.query(Transcript).filter(Transcript.lecture_id == lec.id).first()
     assert t_in_db.status == "failed"
+    assert t_in_db.raw_text is None
+    assert t_in_db.corrected_text is None
+    assert t_in_db.segment_timestamps_json is None
     assert "Object not found in Supabase Storage" in t_in_db.error_message
 
 
@@ -227,6 +282,9 @@ def test_chunking_failure_marks_transcript_failed(orchestration_db_session, monk
 
     t_in_db = session.query(Transcript).filter(Transcript.lecture_id == lec.id).first()
     assert t_in_db.status == "failed"
+    assert t_in_db.raw_text is None
+    assert t_in_db.corrected_text is None
+    assert t_in_db.segment_timestamps_json is None
     assert "ffprobe failed to probe audio duration" in t_in_db.error_message
 
 
@@ -251,7 +309,10 @@ def test_chunk_retry_first_attempt_fails_retry_succeeds(orchestration_db_session
         attempt_count += 1
         if attempt_count == 1:
             raise TranscriptionError("Groq ASR rate limit temporary error")
-        return {"text": "Recovered text on attempt 2."}
+        return {
+            "text": "Recovered text on attempt 2.",
+            "segments": [{"id": 0, "start": 0.0, "end": 5.0, "text": "Recovered text on attempt 2."}]
+        }
 
     monkeypatch.setattr(transcription_service, "translate_audio_to_english", mock_translate_retry)
 
@@ -259,7 +320,9 @@ def test_chunk_retry_first_attempt_fails_retry_succeeds(orchestration_db_session
 
     assert attempt_count == 2
     assert transcript.status == "completed"
-    assert transcript.transcript_text == "Recovered text on attempt 2."
+    assert transcript.raw_text == "Recovered text on attempt 2."
+    assert transcript.corrected_text is None
+    assert transcript.segment_timestamps_json is not None
     assert transcript.error_message is None
 
 
@@ -284,7 +347,10 @@ def test_chunk_retry_multiple_failures_then_succeeds(orchestration_db_session, m
         attempt_count += 1
         if attempt_count < 3:
             raise TranscriptionError(f"Transient Groq error attempt {attempt_count}")
-        return {"text": "Recovered text on attempt 3."}
+        return {
+            "text": "Recovered text on attempt 3.",
+            "segments": [{"id": 0, "start": 0.0, "end": 5.0, "text": "Recovered text on attempt 3."}]
+        }
 
     monkeypatch.setattr(transcription_service, "translate_audio_to_english", mock_translate_multi_retry)
 
@@ -292,7 +358,9 @@ def test_chunk_retry_multiple_failures_then_succeeds(orchestration_db_session, m
 
     assert attempt_count == 3
     assert transcript.status == "completed"
-    assert transcript.transcript_text == "Recovered text on attempt 3."
+    assert transcript.raw_text == "Recovered text on attempt 3."
+    assert transcript.corrected_text is None
+    assert transcript.segment_timestamps_json is not None
 
 
 def test_chunk_retries_exhausted_marks_failed_and_halts_later_chunks(orchestration_db_session, monkeypatch):
@@ -327,4 +395,7 @@ def test_chunk_retries_exhausted_marks_failed_and_halts_later_chunks(orchestrati
 
     t_in_db = session.query(Transcript).filter(Transcript.lecture_id == lec.id).first()
     assert t_in_db.status == "failed"
+    assert t_in_db.raw_text is None
+    assert t_in_db.corrected_text is None
+    assert t_in_db.segment_timestamps_json is None
     assert "Persistent Groq 500 Internal Error" in t_in_db.error_message

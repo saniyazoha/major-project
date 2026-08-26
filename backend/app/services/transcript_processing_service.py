@@ -1,3 +1,4 @@
+import json
 import time
 from sqlalchemy.orm import Session
 from app.models.lecture import Lecture
@@ -19,7 +20,7 @@ def process_lecture_transcription(
     max_retries: int = MAX_CHUNK_RETRIES,
     backoff_seconds: float = INITIAL_BACKOFF_SECONDS,
 ) -> Transcript:
-    """Orchestrate downloading audio, chunking, Groq translation with retry, and transcript persistence for a lecture."""
+    """Orchestrate downloading audio, chunking, Groq translation with retry, timestamp offsetting, and transcript persistence for a lecture."""
     lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
     if not lecture:
         raise TranscriptProcessingError(f"Lecture with ID {lecture_id} not found")
@@ -52,8 +53,10 @@ def process_lecture_transcription(
 
         # Step 3: Process chunks sequentially with controlled retries per chunk
         chunk_texts = []
+        all_segments = []
+
         for chunk in chunks:
-            chunk_text = None
+            chunk_result = None
             last_exception = None
 
             for attempt in range(1, max_retries + 1):
@@ -62,7 +65,7 @@ def process_lecture_transcription(
                         audio_file=chunk["file_bytes"],
                         filename=chunk["filename"]
                     )
-                    chunk_text = result.get("text", "").strip()
+                    chunk_result = result
                     last_exception = None
                     break  # Translation succeeded, exit retry loop
                 except Exception as e:
@@ -70,19 +73,37 @@ def process_lecture_transcription(
                     if attempt < max_retries and backoff_seconds > 0:
                         time.sleep(backoff_seconds * attempt)
 
-            if last_exception is not None or chunk_text is None:
+            if last_exception is not None or chunk_result is None:
                 raise TranscriptProcessingError(
                     f"Groq translation failed for chunk {chunk['chunk_index']} after {max_retries} attempts: {str(last_exception)}"
                 )
 
-            if chunk_text:
-                chunk_texts.append(chunk_text)
+            # Collect text
+            text = chunk_result.get("text", "").strip()
+            if text:
+                chunk_texts.append(text)
 
-        # Step 4: Combine text in chunk order
+            # Collect and offset segments
+            chunk_start = chunk.get("start_time", 0.0)
+            raw_segments = chunk_result.get("segments", [])
+            if isinstance(raw_segments, list):
+                for seg in raw_segments:
+                    if isinstance(seg, dict):
+                        adj_seg = dict(seg)
+                        if "start" in adj_seg and isinstance(adj_seg["start"], (int, float)):
+                            adj_seg["start"] = round(chunk_start + adj_seg["start"], 3)
+                        if "end" in adj_seg and isinstance(adj_seg["end"], (int, float)):
+                            adj_seg["end"] = round(chunk_start + adj_seg["end"], 3)
+                        all_segments.append(adj_seg)
+
+        # Step 4: Combine text in chunk order and serialize offset segments
         combined_transcript = " ".join(chunk_texts)
+        serialized_timestamps = json.dumps(all_segments) if all_segments else None
 
         # Step 5: Save completed result
-        transcript.transcript_text = combined_transcript
+        transcript.raw_text = combined_transcript
+        transcript.corrected_text = None
+        transcript.segment_timestamps_json = serialized_timestamps
         transcript.status = "completed"
         transcript.error_message = None
         db.commit()

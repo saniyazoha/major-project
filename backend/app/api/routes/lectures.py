@@ -1,11 +1,13 @@
 import os
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.dependencies import get_current_user, require_faculty
 from app.schemas.lecture import LectureResponse
-from app.services import lecture_service, storage_service
+from app.schemas.transcript import TranscriptResponse
+from app.models.transcript import Transcript
+from app.services import lecture_service, storage_service, transcript_processing_service
 
 router = APIRouter(prefix="/lectures", tags=["lectures"])
 
@@ -120,3 +122,65 @@ def get_lecture(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
         )
     return lecture
+
+
+@router.post("/{lecture_id}/transcribe", status_code=status.HTTP_202_ACCEPTED)
+def trigger_transcription(
+    lecture_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_faculty: dict = Depends(require_faculty),
+):
+    """Faculty endpoint to trigger lecture transcription via background task."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_faculty["user_id"],
+        role="faculty",
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    background_tasks.add_task(
+        transcript_processing_service.process_lecture_transcription,
+        db,
+        lecture_id,
+    )
+    return {"lecture_id": lecture_id, "status": "processing"}
+
+
+@router.get("/{lecture_id}/transcript", response_model=TranscriptResponse, status_code=status.HTTP_200_OK)
+def get_transcript(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve the transcript for a lecture following existing access rules."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    transcript = db.query(Transcript).filter(Transcript.lecture_id == lecture_id).first()
+    if not transcript:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Transcript not found for this lecture"
+        )
+
+    return transcript
