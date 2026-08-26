@@ -1,81 +1,40 @@
-import {
-  BookOpen,
-  CheckCircle,
-  Clock,
-  ArrowRight,
-  TrendingUp,
-  LogOut,
-} from "lucide-react";
+import { CalendarDays, Clock, LogOut } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { subjects } from "../../data/subjects";
 import { lectures } from "../../data/lectures";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
 
-  const recentLectures = useMemo(() => {
-    return lectures.slice(0, 4);
+  const username = localStorage.getItem("username") || "Kee";
+  const firstName = username.trim().split(" ")[0] || "Kee";
+
+  const broadcastLectures = useMemo(() => {
+    return lectures.filter(
+      (lecture) => lecture.broadcastStatus === "Broadcast",
+    );
   }, []);
 
   const completedLectures = useMemo(() => {
-    return lectures.filter((lecture) => lecture.status === "Processed").length;
-  }, []);
+    return broadcastLectures.filter((lecture) => lecture.status === "Processed")
+      .length;
+  }, [broadcastLectures]);
 
-  const totalLectures = lectures.length;
-
-  const remainingLectures = Math.max(0, totalLectures - completedLectures);
+  const totalLectures = broadcastLectures.length;
 
   const overallProgress =
     totalLectures === 0
       ? 0
       : Math.round((completedLectures / totalLectures) * 100);
 
-  const subjectProgress = useMemo(() => {
-    return subjects.map((subject) => {
-      const subjectLectures = lectures.filter(
-        (lecture) => String(lecture.subjectId) === String(subject.id),
-      );
+  const averageQuizScore = 88;
 
-      const completed = subjectLectures.filter(
-        (lecture) => lecture.status === "Processed",
-      ).length;
+  const pendingReviews = Math.max(
+    0,
+    broadcastLectures.length - completedLectures,
+  );
 
-      const total =
-        typeof subject.lectures === "number"
-          ? subject.lectures
-          : subjectLectures.length;
-
-      const calculatedProgress =
-        total === 0 ? 0 : Math.round((completed / total) * 100);
-
-      const progress =
-        typeof subject.progress === "number"
-          ? subject.progress
-          : calculatedProgress;
-
-      return {
-        ...subject,
-        total,
-        completed,
-        progress: Math.min(100, Math.max(0, progress)),
-      };
-    });
-  }, []);
-
-  /*
-   * Frontend-only logout.
-   *
-   * The existing Login page stores authentication information
-   * in localStorage using these keys:
-   *
-   * isAuthenticated
-   * role
-   * username
-   *
-   * Remove all of them and return to the existing Login page.
-   */
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("role");
@@ -84,269 +43,133 @@ export default function StudentDashboard() {
     navigate("/login", { replace: true });
   };
 
+  const formatDuration = (duration) => {
+    if (!duration) return "45 mins";
+
+    if (duration.includes(":")) {
+      const [minutes] = duration.split(":");
+      return `${minutes} mins`;
+    }
+
+    return duration;
+  };
+
   return (
-    <div className="page">
-      {/* Page Header */}
-      <section className="student-dashboard-header">
+    <div
+      className="page"
+      style={{
+        maxWidth: "1280px",
+        margin: "0 auto",
+        paddingTop: 10,
+      }}
+    >
+      {/* =====================================================
+          WELCOME HEADER
+      ===================================================== */}
+
+      <section>
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "flex-start",
-            gap: 20,
-            flexWrap: "wrap",
+            justifyContent: "space-between",
+            gap: 24,
           }}
         >
           <div>
-            <p className="eyebrow">LEARNING</p>
+            <h1
+              style={{
+                margin: 0,
+                color: "#0f274f",
+                fontSize: 34,
+                lineHeight: 1.2,
+                fontWeight: 700,
+                letterSpacing: "-0.7px",
+              }}
+            >
+              Welcome back, {firstName}
+            </h1>
 
-            <h1>Student Dashboard</h1>
-
-            <p className="muted">
-              Continue learning and track your progress across your subjects.
+            <p
+              style={{
+                margin: "5px 0 0",
+                color: "#68778d",
+                fontSize: 15,
+                lineHeight: 1.6,
+              }}
+            >
+              Here's what your faculty has released recently.
             </p>
           </div>
 
           <button
             type="button"
-            className="secondary-action-button"
             onClick={handleLogout}
+            title="Logout"
+            aria-label="Logout"
             style={{
-              display: "inline-flex",
+              width: 38,
+              height: 38,
+              display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              flexShrink: 0,
+              border: "1px solid #e2e8f0",
+              borderRadius: 9,
+              background: "#ffffff",
+              color: "#64748b",
+              cursor: "pointer",
             }}
           >
-            <LogOut size={18} />
-            <span>Logout</span>
+            <LogOut size={17} />
           </button>
         </div>
       </section>
 
-      {/* Overview Cards */}
+      {/* =====================================================
+          STAT CARDS
+      ===================================================== */}
+
       <section
-        className="student-dashboard-stats"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-          gap: 16,
-          marginTop: 24,
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 14,
+          marginTop: 25,
         }}
       >
         <div
-          className="card student-stat-card"
+          className="card"
           style={{
-            padding: 20,
+            minHeight: 102,
+            padding: "20px 20px 18px",
+            borderRadius: 15,
+            background: "#ffffff",
+            border: "1px solid #e1e7ef",
+            boxShadow: "0 8px 22px rgba(15, 39, 79, 0.07)",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 10,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#eef4ff",
-              }}
-            >
-              <BookOpen size={21} />
-            </div>
-          </div>
-
           <p
-            className="muted"
-            style={{
-              marginTop: 16,
-              marginBottom: 6,
-            }}
-          >
-            Total Lectures
-          </p>
-
-          <h2
             style={{
               margin: 0,
-              fontSize: 28,
-            }}
-          >
-            {totalLectures}
-          </h2>
-        </div>
-
-        <div
-          className="card student-stat-card"
-          style={{
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#eef4ff",
-            }}
-          >
-            <CheckCircle size={21} />
-          </div>
-
-          <p
-            className="muted"
-            style={{
-              marginTop: 16,
-              marginBottom: 6,
-            }}
-          >
-            Completed
-          </p>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 28,
-            }}
-          >
-            {completedLectures}
-          </h2>
-        </div>
-
-        <div
-          className="card student-stat-card"
-          style={{
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#eef4ff",
-            }}
-          >
-            <TrendingUp size={21} />
-          </div>
-
-          <p
-            className="muted"
-            style={{
-              marginTop: 16,
-              marginBottom: 6,
+              color: "#566782",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
             }}
           >
             Overall Progress
           </p>
 
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 28,
-            }}
-          >
-            {overallProgress}%
-          </h2>
-        </div>
-
-        <div
-          className="card student-stat-card"
-          style={{
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#eef4ff",
-            }}
-          >
-            <Clock size={21} />
-          </div>
-
-          <p
-            className="muted"
-            style={{
-              marginTop: 16,
-              marginBottom: 6,
-            }}
-          >
-            Remaining
-          </p>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 28,
-            }}
-          >
-            {remainingLectures}
-          </h2>
-        </div>
-      </section>
-
-      {/* Overall Progress */}
-      <section
-        className="card student-progress-card"
-        style={{
-          marginTop: 24,
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 20,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <p className="eyebrow">YOUR PROGRESS</p>
-
-            <h2
-              style={{
-                margin: 0,
-              }}
-            >
-              Overall Learning Progress
-            </h2>
-
-            <p
-              className="muted"
-              style={{
-                marginTop: 6,
-                marginBottom: 0,
-              }}
-            >
-              {completedLectures} of {totalLectures} lectures completed
-            </p>
-          </div>
-
           <strong
             style={{
-              fontSize: 30,
+              display: "block",
+              marginTop: 9,
+              color: "#0f274f",
+              fontSize: 28,
               lineHeight: 1,
+              fontWeight: 700,
             }}
           >
             {overallProgress}%
@@ -354,295 +177,197 @@ export default function StudentDashboard() {
         </div>
 
         <div
+          className="card"
           style={{
-            marginTop: 20,
-            height: 10,
-            background: "#e6eef8",
-            borderRadius: 999,
-            overflow: "hidden",
+            minHeight: 102,
+            padding: "20px 20px 18px",
+            borderRadius: 15,
+            background: "#ffffff",
+            border: "1px solid #e1e7ef",
+            boxShadow: "0 8px 22px rgba(15, 39, 79, 0.07)",
           }}
         >
-          <div
+          <p
             style={{
-              width: `${overallProgress}%`,
-              height: "100%",
-              background: "#1f6feb",
-              borderRadius: 999,
-              transition: "width 0.3s ease",
-            }}
-          />
-        </div>
-
-        <button
-          type="button"
-          className="primary-action-button"
-          onClick={() => navigate("/student/progress")}
-          style={{
-            marginTop: 18,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-          }}
-        >
-          View Detailed Progress
-          <ArrowRight size={16} />
-        </button>
-      </section>
-
-      {/* Subjects */}
-      <section
-        className="student-dashboard-section"
-        style={{
-          marginTop: 28,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <p className="eyebrow">SUBJECTS</p>
-
-            <h2
-              style={{
-                margin: 0,
-              }}
-            >
-              Your Subjects
-            </h2>
-          </div>
-
-          <button
-            type="button"
-            className="secondary-action-button"
-            onClick={() => navigate("/student/subjects")}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
+              margin: 0,
+              color: "#566782",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
             }}
           >
-            View All
-            <ArrowRight size={15} />
-          </button>
+            Lectures Completed
+          </p>
+
+          <strong
+            style={{
+              display: "block",
+              marginTop: 9,
+              color: "#0f274f",
+              fontSize: 28,
+              lineHeight: 1,
+              fontWeight: 700,
+            }}
+          >
+            {completedLectures}/{totalLectures}
+          </strong>
         </div>
 
-        {subjectProgress.length === 0 ? (
-          <div
-            className="card empty-state"
+        <div
+          className="card"
+          style={{
+            minHeight: 102,
+            padding: "20px 20px 18px",
+            borderRadius: 15,
+            background: "#ffffff",
+            border: "1px solid #e1e7ef",
+            boxShadow: "0 8px 22px rgba(15, 39, 79, 0.07)",
+          }}
+        >
+          <p
             style={{
-              marginTop: 16,
+              margin: 0,
+              color: "#566782",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
+            }}
+          >
+            Avg. Quiz Score
+          </p>
+
+          <strong
+            style={{
+              display: "block",
+              marginTop: 9,
+              color: "#0f274f",
+              fontSize: 28,
+              lineHeight: 1,
+              fontWeight: 700,
+            }}
+          >
+            {averageQuizScore}%
+          </strong>
+        </div>
+
+        <div
+          className="card"
+          style={{
+            minHeight: 102,
+            padding: "20px 20px 18px",
+            borderRadius: 15,
+            background: "#ffffff",
+            border: "1px solid #e1e7ef",
+            boxShadow: "0 8px 22px rgba(15, 39, 79, 0.07)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "#566782",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
+            }}
+          >
+            Pending Reviews
+          </p>
+
+          <strong
+            style={{
+              display: "block",
+              marginTop: 9,
+              color: "#0f274f",
+              fontSize: 28,
+              lineHeight: 1,
+              fontWeight: 700,
+            }}
+          >
+            {pendingReviews}
+          </strong>
+        </div>
+      </section>
+
+      {/* =====================================================
+          AVAILABLE LECTURES
+      ===================================================== */}
+
+      <section
+        style={{
+          marginTop: 39,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            color: "#0f274f",
+            fontSize: 18,
+            fontWeight: 700,
+          }}
+        >
+          Available lectures
+        </h2>
+
+        {broadcastLectures.length === 0 ? (
+          <div
+            className="card"
+            style={{
+              marginTop: 14,
               padding: 32,
+              borderRadius: 15,
               textAlign: "center",
             }}
           >
-            <BookOpen size={42} />
-
-            <h3>No subjects available</h3>
-
-            <p className="muted">
-              Your subjects will appear here when they are available.
+            <p
+              style={{
+                margin: 0,
+                color: "#68778d",
+                fontSize: 14,
+              }}
+            >
+              No broadcast lectures are currently available.
             </p>
           </div>
         ) : (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 16,
-              marginTop: 16,
+              gap: 13,
+              marginTop: 14,
             }}
           >
-            {subjectProgress.slice(0, 4).map((subject) => (
-              <div
-                key={subject.id}
-                className="card student-subject-card"
-                role="button"
-                tabIndex={0}
-                style={{
-                  padding: 20,
-                  cursor: "pointer",
-                }}
-                onClick={() => navigate(`/student/subjects/${subject.id}`)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    navigate(`/student/subjects/${subject.id}`);
-                  }
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: 14,
-                  }}
-                >
-                  <div>
-                    <h3
-                      style={{
-                        margin: 0,
-                      }}
-                    >
-                      {subject.name}
-                    </h3>
-
-                    {subject.code && (
-                      <p
-                        className="muted"
-                        style={{
-                          marginTop: 5,
-                          marginBottom: 0,
-                        }}
-                      >
-                        {subject.code}
-                      </p>
-                    )}
-                  </div>
-
-                  <strong>{subject.progress}%</strong>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 18,
-                    height: 9,
-                    background: "#e6eef8",
-                    borderRadius: 999,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${subject.progress}%`,
-                      height: "100%",
-                      background: "#1f6feb",
-                      borderRadius: 999,
-                    }}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 10,
-                    marginTop: 10,
-                  }}
-                >
-                  <span className="muted">
-                    {subject.completed} of {subject.total} completed
-                  </span>
-
-                  <ArrowRight size={16} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Recent Lectures */}
-      <section
-        className="student-dashboard-section"
-        style={{
-          marginTop: 30,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <p className="eyebrow">RECENT</p>
-
-            <h2
-              style={{
-                margin: 0,
-              }}
-            >
-              Recent Lectures
-            </h2>
-          </div>
-
-          <button
-            type="button"
-            className="secondary-action-button"
-            onClick={() => navigate("/student/subjects")}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-            }}
-          >
-            Browse Subjects
-            <ArrowRight size={15} />
-          </button>
-        </div>
-
-        {recentLectures.length === 0 ? (
-          <div
-            className="card empty-state"
-            style={{
-              marginTop: 16,
-              padding: 32,
-              textAlign: "center",
-            }}
-          >
-            <BookOpen size={42} />
-
-            <h3>No lectures available</h3>
-
-            <p className="muted">
-              Lectures will appear here once they are available.
-            </p>
-          </div>
-        ) : (
-          <div
-            className="lecture-list"
-            style={{
-              marginTop: 16,
-              display: "grid",
-              gap: 12,
-            }}
-          >
-            {recentLectures.map((lecture) => (
+            {broadcastLectures.map((lecture) => (
               <div
                 key={lecture.id}
-                className="card student-lecture-card"
+                className="card"
                 role="button"
                 tabIndex={0}
-                style={{
-                  padding: 20,
-                  cursor: "pointer",
-                }}
                 onClick={() => navigate(`/student/lectures/${lecture.id}`)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     navigate(`/student/lectures/${lecture.id}`);
                   }
                 }}
+                style={{
+                  width: "100%",
+                  minHeight: 132,
+                  padding: "22px 24px",
+                  background: "#ffffff",
+                  border: "1px solid #e1e7ef",
+                  borderRadius: 15,
+                  boxShadow: "0 10px 26px rgba(15, 39, 79, 0.07)",
+                  cursor: "pointer",
+                }}
               >
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "flex-start",
-                    gap: 16,
+                    justifyContent: "space-between",
+                    gap: 20,
                   }}
                 >
                   <div
@@ -650,50 +375,121 @@ export default function StudentDashboard() {
                       minWidth: 0,
                     }}
                   >
-                    <p
-                      className="muted"
-                      style={{
-                        margin: 0,
-                      }}
-                    >
-                      {lecture.status || "Processed"}
-                    </p>
-
                     <h3
                       style={{
-                        marginTop: 6,
-                        marginBottom: 0,
+                        margin: 0,
+                        color: "#1f6feb",
+                        fontSize: 17,
+                        lineHeight: 1.4,
+                        fontWeight: 700,
                       }}
                     >
                       {lecture.title}
                     </h3>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        marginTop: 8,
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: 23,
+                          padding: "3px 9px",
+                          borderRadius: 999,
+                          background: "#eef2f7",
+                          color: "#64748b",
+                          fontSize: 11,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {lecture.subjectCode}
+                      </span>
+
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: 23,
+                          padding: "3px 9px",
+                          borderRadius: 999,
+                          background: "#eef2f7",
+                          color: "#64748b",
+                          fontSize: 11,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {lecture.batch}
+                      </span>
+                    </div>
                   </div>
 
-                  <div
+                  <span
                     style={{
-                      flexShrink: 0,
-                      width: 34,
-                      height: 34,
-                      borderRadius: 8,
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
-                      justifyContent: "center",
+                      gap: 7,
+                      flexShrink: 0,
+                      padding: "5px 10px",
+                      borderRadius: 999,
+                      background: "#e9f7ef",
+                      color: "#179253",
+                      fontSize: 11,
+                      fontWeight: 600,
                     }}
                   >
-                    <ArrowRight size={18} />
-                  </div>
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: "#27a568",
+                      }}
+                    />
+
+                    {lecture.broadcastStatus}
+                  </span>
                 </div>
 
-                <p
-                  className="muted"
+                <div
                   style={{
-                    marginTop: 12,
-                    marginBottom: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 17,
+                    marginTop: 14,
+                    color: "#68778d",
+                    fontSize: 12,
                   }}
                 >
-                  {lecture.date}
-                  {lecture.duration ? ` • ${lecture.duration}` : ""}
-                </p>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 7,
+                    }}
+                  >
+                    <CalendarDays size={14} />
+                    {lecture.date}
+                  </span>
+
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 7,
+                    }}
+                  >
+                    <Clock size={14} />
+                    {formatDuration(lecture.duration)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

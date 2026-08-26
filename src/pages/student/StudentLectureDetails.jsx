@@ -1,248 +1,578 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, Clock, User } from "lucide-react";
+import { ArrowLeft, Clock, Download, FileText } from "lucide-react";
 
-import { lectures } from "../../data/lectures";
+import { lectures, lectureData } from "../../data/lectures";
 
 function StudentLectureDetails() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find((item) => item.id === Number(lectureId));
+  const lecture = lectures.find(
+    (item) => String(item.id) === String(lectureId),
+  );
 
-  const resumeAudio = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioContext();
+  const selectedLectureData = lecture ? lectureData[lecture.dataId] : null;
 
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
+  const isPublished = lecture?.broadcastStatus === "Broadcast";
 
-      o.type = "sine";
-      o.frequency.value = 440;
+  const editedBy =
+    lecture?.editedBy ||
+    lecture?.lastEditedBy ||
+    lecture?.updatedBy ||
+    selectedLectureData?.editedBy ||
+    selectedLectureData?.lastEditedBy ||
+    selectedLectureData?.updatedBy ||
+    "";
 
-      o.connect(g);
-      g.connect(ctx.destination);
-
-      o.start();
-      g.gain.setValueAtTime(0.001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.1, ctx.currentTime + 0.1);
-
-      setTimeout(() => {
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-        o.stop();
-        ctx.close();
-      }, 800);
-    } catch (e) {
-      alert("Audio demo not supported in this browser.");
+  const formatEditorName = (name) => {
+    if (!name) {
+      return "";
     }
+
+    const cleanedName = String(name)
+      .replace(/^Ms\.\s*/i, "")
+      .replace(/^Mrs\.\s*/i, "")
+      .replace(/^Dr\.\s*/i, "")
+      .trim();
+
+    return `Edited by Ms. ${cleanedName}`;
   };
 
-  const downloadPdf = () => {
-    const content = `${lecture.title}\n\n${lecture.date} • ${lecture.duration}\n\nSummary:\n${lecture.title}`;
+  const formatDuration = (duration) => {
+    if (!duration) {
+      return "";
+    }
 
-    const blob = new Blob([content], { type: "application/pdf" });
+    if (String(duration).includes(":")) {
+      const [minutes] = String(duration).split(":");
+      return `${minutes} mins`;
+    }
+
+    return duration;
+  };
+
+  const downloadMaterial = (type) => {
+    if (!lecture || !selectedLectureData) {
+      return;
+    }
+
+    let content = "";
+
+    if (type === "transcript") {
+      content = selectedLectureData.transcript
+        ?.map((item) => `${item.time}\n${item.text}`)
+        .join("\n\n");
+    }
+
+    if (type === "notes") {
+      content = selectedLectureData.summary
+        ?.map((item) => `• ${item}`)
+        .join("\n");
+    }
+
+    if (type === "flashcards") {
+      content = selectedLectureData.flashcards
+        ?.map((item, index) => `${index + 1}. ${item.question}\n${item.answer}`)
+        .join("\n\n");
+    }
+
+    if (type === "quiz") {
+      content = selectedLectureData.quiz
+        ?.map(
+          (item, index) =>
+            `${index + 1}. ${item.question}\n${item.options
+              .map(
+                (option, optionIndex) =>
+                  `${String.fromCharCode(65 + optionIndex)}. ${option}`,
+              )
+              .join("\n")}`,
+        )
+        .join("\n\n");
+    }
+
+    const blob = new Blob([`${lecture.title}\n\n${content || ""}`], {
+      type: "application/pdf",
+    });
+
     const url = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${lecture.title}.pdf`;
-    a.click();
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${lecture.title}-${type}.pdf`;
+    anchor.click();
+
     URL.revokeObjectURL(url);
   };
 
-  /* =========================================================
-     LECTURE NOT FOUND
-     ========================================================= */
+  const downloadFullStudyPack = () => {
+    if (!lecture || !selectedLectureData) {
+      return;
+    }
+
+    const transcript =
+      selectedLectureData.transcript
+        ?.map((item) => `${item.time} ${item.text}`)
+        .join("\n") || "";
+
+    const notes =
+      selectedLectureData.summary?.map((item) => `• ${item}`).join("\n") || "";
+
+    const flashcards =
+      selectedLectureData.flashcards
+        ?.map((item, index) => `${index + 1}. ${item.question}\n${item.answer}`)
+        .join("\n\n") || "";
+
+    const quiz =
+      selectedLectureData.quiz
+        ?.map((item, index) => `${index + 1}. ${item.question}`)
+        .join("\n") || "";
+
+    const content = `
+${lecture.title}
+
+TRANSCRIPT
+${transcript}
+
+NOTES
+${notes}
+
+FLASHCARDS
+${flashcards}
+
+QUIZ
+${quiz}
+`;
+
+    const blob = new Blob([content], {
+      type: "application/pdf",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${lecture.title}-study-pack.pdf`;
+    anchor.click();
+
+    URL.revokeObjectURL(url);
+  };
 
   if (!lecture) {
     return (
       <div className="page student-page">
         <button
+          type="button"
           className="back-button"
-          onClick={() => navigate("/student/subjects")}
+          onClick={() => navigate("/student/dashboard")}
         >
           <ArrowLeft size={15} />
-          Back to Subjects
+          Back to dashboard
         </button>
 
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
           <h3>Lecture not found</h3>
-
           <p>The requested lecture does not exist.</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="page student-page">
-      {/* =====================================================
-          BACK BUTTON
-          ===================================================== */}
+  if (!isPublished) {
+    return (
+      <div className="page student-page">
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate("/student/dashboard")}
+        >
+          <ArrowLeft size={15} />
+          Back to dashboard
+        </button>
 
-      <button className="back-button" onClick={() => navigate(-1)}>
-        <ArrowLeft size={15} />
-        Back
+        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+          <h3>Lecture not available</h3>
+          <p>This lecture has not been published to students yet.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedLectureData) {
+    return (
+      <div className="page student-page">
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate("/student/dashboard")}
+        >
+          <ArrowLeft size={15} />
+          Back to dashboard
+        </button>
+
+        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+          <h3>Lecture material unavailable</h3>
+          <p>
+            Published learning material could not be found for this lecture.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="page student-page"
+      style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => navigate("/student/dashboard")}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          color: "#627188",
+          fontSize: 14,
+          cursor: "pointer",
+        }}
+      >
+        <ArrowLeft size={17} />
+        Back to dashboard
       </button>
 
-      {/* =====================================================
-          LECTURE INFORMATION
-          ===================================================== */}
+      <section
+        style={{
+          marginTop: 22,
+        }}
+      >
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 34,
+            color: "#0f274f",
+            letterSpacing: "-0.6px",
+          }}
+        >
+          {lecture.title}
+        </h1>
 
-      <section className="card student-lecture-info-card">
-        <div className="student-lecture-info-main">
-          <div className="student-lecture-large-icon">
-            <BookOpen size={24} />
-          </div>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 9,
+            marginTop: 10,
+          }}
+        >
+          <span
+            style={{
+              padding: "4px 9px",
+              borderRadius: 999,
+              background: "#eef2f7",
+              color: "#627188",
+              fontSize: 11,
+              fontWeight: 600,
+            }}
+          >
+            {lecture.subjectCode}
+          </span>
 
-          <div>
-            <p className="eyebrow">
-              {lecture.subject || "Computer Science 301"}
-            </p>
+          <span
+            style={{
+              padding: "4px 9px",
+              borderRadius: 999,
+              background: "#eef2f7",
+              color: "#627188",
+              fontSize: 11,
+              fontWeight: 600,
+            }}
+          >
+            {lecture.batch}
+          </span>
 
-            <h2>{lecture.title}</h2>
-
-            <div className="student-lecture-info-meta">
-              <span>
-                <User size={14} />
-                {lecture.lecturer}
-              </span>
-
-              <span>
-                <Clock size={14} />
-                {lecture.duration}
-              </span>
-
-              <span>{lecture.date}</span>
-            </div>
-
-            <div className="student-lecture-actions">
-              <button className="primary-button" onClick={resumeAudio}>
-                ▶ Resume Audio
-              </button>
-
-              <button className="secondary-button" onClick={downloadPdf}>
-                ↓ Download PDF
-              </button>
-            </div>
-          </div>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 9px",
+              borderRadius: 999,
+              background: "#eef2f7",
+              color: "#627188",
+              fontSize: 11,
+              fontWeight: 600,
+            }}
+          >
+            <Clock size={12} />
+            {formatDuration(lecture.duration)}
+          </span>
         </div>
 
-        <span className={`lecture-status ${lecture.status.toLowerCase()}`}>
-          {lecture.status}
-        </span>
+        {editedBy && (
+          <p
+            style={{
+              margin: "10px 0 0",
+              color: "#64748b",
+              fontSize: 12,
+              fontWeight: 500,
+            }}
+          >
+            {formatEditorName(editedBy)}
+          </p>
+        )}
       </section>
 
-      {/* =====================================================
-          LEARNING RESOURCES
-          ===================================================== */}
+      <section
+        className="card"
+        style={{
+          marginTop: 24,
+          padding: "22px 20px",
+          borderRadius: 15,
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            color: "#52647d",
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.12em",
+          }}
+        >
+          Download Published Material
+        </p>
 
-      <section className="student-lecture-resources">
-        <div className="student-material-header">
-          <div>
-            <p className="eyebrow">Learning Resources</p>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 9,
+            marginTop: 14,
+          }}
+        >
+          <button
+            type="button"
+            className="primary-action-button"
+            onClick={downloadFullStudyPack}
+          >
+            <Download size={16} />
+            Full study pack
+          </button>
 
-            <h2>Lecture Materials</h2>
+          <button
+            type="button"
+            onClick={() => downloadMaterial("transcript")}
+            style={materialButtonStyle}
+          >
+            <FileText size={16} />
+            Transcript PDF
+          </button>
 
-            <p className="muted">
-              Access AI-generated learning resources for this lecture.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => downloadMaterial("notes")}
+            style={materialButtonStyle}
+          >
+            <FileText size={16} />
+            Notes & summary PDF
+          </button>
+
+          <button
+            type="button"
+            onClick={() => downloadMaterial("flashcards")}
+            style={materialButtonStyle}
+          >
+            <FileText size={16} />
+            Flashcards PDF
+          </button>
+
+          <button
+            type="button"
+            onClick={() => downloadMaterial("quiz")}
+            style={materialButtonStyle}
+          >
+            <FileText size={16} />
+            Practice quiz PDF
+          </button>
         </div>
+      </section>
 
-        {/* ===================================================
-            MATERIAL TABS
-            =================================================== */}
-
-        <div className="student-material-tabs">
-          <button type="button" className="student-material-tab active">
-            <BookOpen size={15} />
-            Overview
-          </button>
-
+      <section
+        style={{
+          marginTop: 28,
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 3,
+            padding: 4,
+            borderRadius: 12,
+            background: "#eef1f5",
+          }}
+        >
           <button
             type="button"
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/transcript`)
-            }
+            onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
+            style={activeTabButtonStyle}
           >
-            Transcript
+            Notes
           </button>
 
           <button
             type="button"
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/summary`)}
-          >
-            Summary
-          </button>
-
-          <button
-            type="button"
-            className="student-material-tab"
-            onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/key-concepts`)
-            }
-          >
-            Key Concepts
-          </button>
-
-          <button
-            type="button"
-            className="student-material-tab"
             onClick={() =>
               navigate(`/student/lectures/${lecture.id}/flashcards`)
             }
+            style={tabButtonStyle}
           >
             Flashcards
           </button>
 
           <button
             type="button"
-            className="student-material-tab"
             onClick={() => navigate(`/student/lectures/${lecture.id}/quiz`)}
+            style={tabButtonStyle}
           >
             Quiz
           </button>
 
           <button
             type="button"
-            className="student-material-tab"
-            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+            onClick={() =>
+              navigate(`/student/lectures/${lecture.id}/transcript`)
+            }
+            style={tabButtonStyle}
           >
-            Q&A
+            Transcript
+          </button>
+
+          <button type="button" style={tabButtonStyle}>
+            Ask
           </button>
         </div>
 
-        {/* ===================================================
-            OVERVIEW CARD
-            =================================================== */}
+        <div
+          className="card"
+          style={{
+            marginTop: 18,
+            padding: 22,
+            borderRadius: 15,
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "#52647d",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.11em",
+            }}
+          >
+            Summary
+          </p>
 
-        <div className="card student-material-card">
-          <div className="student-material-card-header">
-            <div>
-              <p className="eyebrow">Overview</p>
+          <p
+            style={{
+              margin: "13px 0 0",
+              color: "#627188",
+              fontSize: 14,
+              lineHeight: 1.8,
+            }}
+          >
+            {selectedLectureData.summary?.[0] ||
+              `Review the published learning material for ${lecture.title}.`}
+          </p>
 
-              <h3>{lecture.title}</h3>
+          {selectedLectureData.concepts?.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 15,
+              }}
+            >
+              {selectedLectureData.concepts.map((concept) => (
+                <span
+                  key={concept.title}
+                  style={{
+                    padding: "5px 10px",
+                    borderRadius: 999,
+                    background: "#eef2f7",
+                    color: "#627188",
+                    fontSize: 11,
+                  }}
+                >
+                  {concept.title}
+                </span>
+              ))}
             </div>
-          </div>
+          )}
 
-          <div className="student-material-content">
-            <p>
-              This lecture covers the main concepts and topics discussed during
-              the session.
+          {editedBy && (
+            <p
+              style={{
+                margin: "18px 0 0",
+                color: "#64748b",
+                fontSize: 11,
+                fontStyle: "italic",
+              }}
+            >
+              {formatEditorName(editedBy)}
             </p>
-
-            <p>
-              Use the learning resources above to review the lecture, revise
-              important concepts, and test your understanding.
-            </p>
-          </div>
+          )}
         </div>
       </section>
     </div>
   );
 }
+
+const materialButtonStyle = {
+  minHeight: 38,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 7,
+  padding: "8px 13px",
+  border: "none",
+  borderRadius: 9,
+  background: "#e4efff",
+  color: "#0f3d75",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const tabButtonStyle = {
+  minHeight: 36,
+  padding: "7px 14px",
+  border: "none",
+  borderRadius: 9,
+  background: "transparent",
+  color: "#53657d",
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "pointer",
+};
+
+const activeTabButtonStyle = {
+  ...tabButtonStyle,
+  background: "#ffffff",
+  color: "#0f274f",
+  fontWeight: 600,
+  boxShadow: "0 1px 4px rgba(15, 39, 79, 0.12)",
+};
 
 export default StudentLectureDetails;

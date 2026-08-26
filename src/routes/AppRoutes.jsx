@@ -31,6 +31,7 @@ import StudentSubjects from "../pages/student/StudentSubjects";
 import SubjectLectures from "../pages/student/SubjectLectures";
 import StudentLectureDetails from "../pages/student/StudentLectureDetails";
 
+import StudentNotes from "../pages/student/StudentNotes";
 import StudentTranscript from "../pages/student/StudentTranscript";
 import StudentSummary from "../pages/student/StudentSummary";
 import StudentKeyConcepts from "../pages/student/StudentKeyConcepts";
@@ -68,102 +69,46 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        {/* /faculty */}
-
         <Route index element={<Navigate to="dashboard" replace />} />
 
-        {/* =========================
-            FACULTY DASHBOARD
-        ========================= */}
-
         <Route path="dashboard" element={<FacultyDashboard />} />
-
-        {/* =========================
-            FACULTY UPLOADS
-        ========================= */}
 
         <Route path="uploads" element={<FacultyUploads />} />
 
         <Route path="uploads/new" element={<FacultyUploadLecture />} />
 
-        {/* =========================
-            FACULTY SUBJECTS
-        ========================= */}
-
         <Route path="subjects" element={<FacultySubjects />} />
-
-        {/* =========================
-            SUBJECT DETAILS
-        ========================= */}
 
         <Route path="subjects/:subjectId" element={<FacultySubjectDetails />} />
 
-        {/* =========================
-            SHORT LECTURE DETAILS
-        ========================= */}
-
         <Route path="lectures/:lectureId" element={<FacultyLectureDetails />} />
-
-        {/* =========================
-            LECTURER PAGE
-        ========================= */}
 
         <Route
           path="subjects/:subjectId/lecturers/:lecturerId"
           element={<FacultyLectureDetails />}
         />
 
-        {/* =================================================
-            FULL LECTURE DETAILS
-
-            Example:
-            /faculty/subjects/1/lecturers/ada-lovelace/lectures/1
-        ================================================= */}
-
         <Route
           path="subjects/:subjectId/lecturers/:lecturerId/lectures/:lectureId"
           element={<FacultyLectureDetails />}
         />
-
-        {/* =================================================
-            INDIVIDUAL LECTURE ANALYTICS
-        ================================================= */}
 
         <Route
           path="subjects/:subjectId/lecturers/:lecturerId/lectures/:lectureId/analytics"
           element={<FacultyAnalytics />}
         />
 
-        {/* =========================
-            SHORT ANALYTICS ROUTE
-        ========================= */}
-
         <Route
           path="analytics/:subjectId/:lecturerId/:lectureId"
           element={<FacultyAnalytics />}
         />
 
-        {/* =========================
-            FACULTY STUDENT PROGRESS
-        ========================= */}
-
         <Route path="student-progress" element={<FacultyStudentProgress />} />
-
-        {/* =================================================
-            INDIVIDUAL STUDENT PROGRESS
-
-            Example:
-            /faculty/student-progress/1CS21CS001
-        ================================================= */}
 
         <Route
           path="student-progress/:usn"
           element={<StudentProgressDetails />}
         />
-
-        {/* =========================
-            FACULTY SETTINGS
-        ========================= */}
 
         <Route path="settings" element={<FacultySettings />} />
       </Route>
@@ -180,29 +125,21 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        {/* /student */}
-
         <Route index element={<Navigate to="dashboard" replace />} />
 
-        {/* =========================
-            STUDENT DASHBOARD
-        ========================= */}
-
         <Route path="dashboard" element={<StudentDashboard />} />
-
-        {/* =========================
-            STUDENT SUBJECTS
-        ========================= */}
 
         <Route path="subjects" element={<StudentSubjects />} />
 
         <Route path="subjects/:subjectId" element={<SubjectLectures />} />
 
+        <Route path="lectures/:lectureId" element={<StudentLectureDetails />} />
+
         {/* =========================
-            STUDENT LECTURES
+            STUDENT NOTES
         ========================= */}
 
-        <Route path="lectures/:lectureId" element={<StudentLectureDetails />} />
+        <Route path="lectures/:lectureId/notes" element={<StudentNotes />} />
 
         {/* =========================
             STUDENT TRANSCRIPT
@@ -252,10 +189,6 @@ function AppRoutes() {
 
         <Route path="lectures/:lectureId/qa" element={<StudentQA />} />
 
-        {/* =========================
-            SUBJECT → LECTURERS
-        ========================= */}
-
         <Route
           path="subjects/:subjectId/lecturers"
           element={<SubjectLectures />}
@@ -266,22 +199,10 @@ function AppRoutes() {
           element={<SubjectLectures />}
         />
 
-        {/* =========================
-            STUDENT PROGRESS
-        ========================= */}
-
         <Route path="progress" element={<StudentProgress />} />
-
-        {/* =========================
-            STUDENT SETTINGS
-        ========================= */}
 
         <Route path="settings" element={<StudentSettings />} />
       </Route>
-
-      {/* =========================
-          INVALID URL
-      ========================= */}
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

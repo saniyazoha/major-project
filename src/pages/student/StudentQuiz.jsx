@@ -1,13 +1,33 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { lectureData } from "../data/lectureData";
-import "../styles/LectureResources.css";
 
-export default function QuizPage() {
+import { lectures, lectureData } from "../../data/lectures";
+
+export default function StudentQuiz() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectureData[lectureId] || lectureData["lecture-04"];
+  const lecture = lectures.find(
+    (item) => String(item.id) === String(lectureId),
+  );
+
+  const selectedLectureData = lecture ? lectureData[lecture.dataId] : null;
+
+  const isPublished = lecture?.broadcastStatus === "Broadcast";
+
+  const quizQuestions =
+    selectedLectureData?.publishedQuiz || selectedLectureData?.quiz || [];
+
+  const editedBy =
+    selectedLectureData?.quizEditedBy ||
+    selectedLectureData?.editedBy ||
+    selectedLectureData?.lastEditedBy ||
+    selectedLectureData?.updatedBy ||
+    lecture?.quizEditedBy ||
+    lecture?.editedBy ||
+    lecture?.lastEditedBy ||
+    lecture?.updatedBy ||
+    "";
 
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -15,8 +35,24 @@ export default function QuizPage() {
   const [time, setTime] = useState(15 * 60);
   const [finished, setFinished] = useState(false);
 
+  const formatEditorName = (name) => {
+    if (!name) {
+      return "";
+    }
+
+    const cleanedName = String(name)
+      .replace(/^Ms\.\s*/i, "")
+      .replace(/^Mrs\.\s*/i, "")
+      .replace(/^Dr\.\s*/i, "")
+      .trim();
+
+    return `Edited by Ms. ${cleanedName}`;
+  };
+
   useEffect(() => {
-    if (finished) return;
+    if (finished || !lecture || !isPublished || quizQuestions.length === 0) {
+      return;
+    }
 
     const timer = setInterval(() => {
       setTime((previous) => {
@@ -31,7 +67,7 @@ export default function QuizPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [finished]);
+  }, [finished, lecture, isPublished, quizQuestions.length]);
 
   const formatTime = () => {
     const minutes = Math.floor(time / 60);
@@ -43,191 +79,590 @@ export default function QuizPage() {
     )}`;
   };
 
-  const nextQuestion = () => {
-    if (selected === lecture.quiz[current].answer) {
+  const registerCurrentAnswer = () => {
+    if (selected !== null && selected === quizQuestions[current]?.answer) {
       setScore((previous) => previous + 1);
-    }
-
-    if (current === lecture.quiz.length - 1) {
-      setFinished(true);
-    } else {
-      setCurrent((previous) => previous + 1);
-      setSelected(null);
     }
   };
 
-  if (finished) {
+  const nextQuestion = () => {
+    if (selected === null) {
+      return;
+    }
+
+    registerCurrentAnswer();
+
+    if (current === quizQuestions.length - 1) {
+      setFinished(true);
+      return;
+    }
+
+    setCurrent((previous) => previous + 1);
+    setSelected(null);
+  };
+
+  const previousQuestion = () => {
+    if (current === 0) {
+      return;
+    }
+
+    setCurrent((previous) => previous - 1);
+    setSelected(null);
+  };
+
+  const submitQuiz = () => {
+    if (selected !== null) {
+      registerCurrentAnswer();
+    }
+
+    setFinished(true);
+  };
+
+  if (!lecture) {
     return (
-      <div className="resource-page">
-        <ResourceSidebar navigate={navigate} />
-
-        <main className="resource-main">
-          <ResourceHeader />
-
-          <div className="quiz-result-page">
-            <div className="quiz-result-circle">
-              {score}/{lecture.quiz.length}
-            </div>
-
-            <h1>Quiz Completed 🎉</h1>
-
-            <p>You completed the practice quiz.</p>
-
-            <button
-              className="primary-button"
-              onClick={() => navigate(`/student/lectures/${lectureId}`)}
-            >
-              Back to Lecture
-            </button>
-          </div>
-        </main>
+      <div className="page student-page">
+        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+          <h3>Lecture not found</h3>
+          <p>The requested lecture does not exist.</p>
+        </div>
       </div>
     );
   }
 
-  const quiz = lecture.quiz[current];
+  if (!isPublished) {
+    return (
+      <div className="page student-page">
+        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+          <h3>Lecture not available</h3>
+          <p>This lecture has not been published to students yet.</p>
+        </div>
+      </div>
+    );
+  }
 
-  const progress = ((current + 1) / lecture.quiz.length) * 100;
+  if (!selectedLectureData) {
+    return (
+      <div className="page student-page">
+        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+          <h3>Quiz unavailable</h3>
+          <p>Published quiz content could not be found for this lecture.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (quizQuestions.length === 0) {
+    return (
+      <div
+        className="page student-page"
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
+        <section>
+          <div style={tabContainerStyle}>
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
+            >
+              Notes
+            </button>
+
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() =>
+                navigate(`/student/lectures/${lecture.id}/flashcards`)
+              }
+            >
+              Flashcards
+            </button>
+
+            <button type="button" style={activeTabStyle}>
+              Quiz
+            </button>
+
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() =>
+                navigate(`/student/lectures/${lecture.id}/transcript`)
+              }
+            >
+              Transcript
+            </button>
+
+            <button type="button" style={tabStyle}>
+              Ask
+            </button>
+          </div>
+        </section>
+
+        <div className="card student-resource-empty" style={{ marginTop: 18 }}>
+          <h3>Quiz unavailable</h3>
+          <p>No published quiz is currently available for this lecture.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (finished) {
+    return (
+      <div
+        className="page student-page"
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
+        <section>
+          <div style={tabContainerStyle}>
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
+            >
+              Notes
+            </button>
+
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() =>
+                navigate(`/student/lectures/${lecture.id}/flashcards`)
+              }
+            >
+              Flashcards
+            </button>
+
+            <button type="button" style={activeTabStyle}>
+              Quiz
+            </button>
+
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() =>
+                navigate(`/student/lectures/${lecture.id}/transcript`)
+              }
+            >
+              Transcript
+            </button>
+
+            <button type="button" style={tabStyle}>
+              Ask
+            </button>
+          </div>
+        </section>
+
+        <section
+          className="card"
+          style={{
+            marginTop: 18,
+            minHeight: 330,
+            padding: 30,
+            borderRadius: 15,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 112,
+              height: 112,
+              borderRadius: "50%",
+              background: "#e8f3ed",
+              color: "#087044",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 26,
+              fontWeight: 700,
+            }}
+          >
+            {score}/{quizQuestions.length}
+          </div>
+
+          <h2
+            style={{
+              margin: "22px 0 0",
+              color: "#0f274f",
+              fontSize: 24,
+            }}
+          >
+            Quiz Completed
+          </h2>
+
+          <p
+            style={{
+              margin: "8px 0 0",
+              color: "#627188",
+              fontSize: 14,
+            }}
+          >
+            You completed the practice quiz.
+          </p>
+
+          <button
+            type="button"
+            className="primary-action-button"
+            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
+            style={{
+              marginTop: 20,
+            }}
+          >
+            Back to Lecture
+          </button>
+        </section>
+      </div>
+    );
+  }
+
+  const question = quizQuestions[current];
+
+  const progress = ((current + 1) / quizQuestions.length) * 100;
 
   return (
-    <div className="resource-page">
-      <ResourceSidebar navigate={navigate} />
+    <div
+      className="page student-page"
+      style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+      }}
+    >
+      {/* RESOURCE TABS */}
 
-      <main className="resource-main">
-        <ResourceHeader />
+      <section>
+        <div style={tabContainerStyle}>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
+          >
+            Notes
+          </button>
 
-        <div className="quiz-content">
-          <div className="quiz-top">
-            <div>
-              <span className="badge">{lecture.code}</span>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() =>
+              navigate(`/student/lectures/${lecture.id}/flashcards`)
+            }
+          >
+            Flashcards
+          </button>
 
-              <span className="quiz-duration">◷ {lecture.duration}</span>
+          <button type="button" style={activeTabStyle}>
+            Quiz
+          </button>
 
-              <h1>{lecture.shortTitle}</h1>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() =>
+              navigate(`/student/lectures/${lecture.id}/transcript`)
+            }
+          >
+            Transcript
+          </button>
 
-              <p>Practice Quiz - Module 2</p>
-            </div>
-
-            <div className="quiz-timer">◷ {formatTime()}</div>
-          </div>
-
-          <div className="quiz-progress-header">
-            <span>
-              QUESTION {current + 1} OF {lecture.quiz.length}
-            </span>
-
-            <span>{Math.round(progress)}% Complete</span>
-          </div>
-
-          <div className="quiz-progress">
-            <div
-              style={{
-                width: `${progress}%`,
-              }}
-            />
-          </div>
-
-          <div className="quiz-layout">
-            <section className="quiz-question-card">
-              <h2>{quiz.question}</h2>
-
-              <div className="quiz-reference">
-                Reference: "Lecture Transcript"
-              </div>
-
-              <div className="quiz-options-large">
-                {quiz.options.map((option, index) => (
-                  <button
-                    key={index}
-                    className={selected === index ? "selected" : ""}
-                    onClick={() => setSelected(index)}
-                  >
-                    <span className="radio">
-                      {selected === index ? "●" : "○"}
-                    </span>
-
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <aside className="quiz-right">
-              <div className="hint-card">
-                <h3>✦ LectaAI Hint</h3>
-
-                <p>Think about the core concept discussed in this lecture.</p>
-
-                <button>Generate New Hint</button>
-              </div>
-
-              <div className="quiz-controls">
-                <button>← Previous</button>
-
-                <button
-                  className="next-button"
-                  onClick={nextQuestion}
-                  disabled={selected === null}
-                >
-                  Next →
-                </button>
-
-                <button
-                  className="submit-button"
-                  onClick={() => setFinished(true)}
-                >
-                  ▷ Submit Quiz
-                </button>
-              </div>
-            </aside>
-          </div>
+          <button type="button" style={tabStyle}>
+            Ask
+          </button>
         </div>
-      </main>
+      </section>
+
+      {editedBy && (
+        <p
+          style={{
+            margin: "12px 0 0",
+            color: "#64748b",
+            fontSize: 11,
+            fontStyle: "italic",
+          }}
+        >
+          {formatEditorName(editedBy)}
+        </p>
+      )}
+
+      {/* QUIZ HEADER */}
+
+      <section
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 20,
+          marginTop: 22,
+        }}
+      >
+        <div>
+          <p
+            style={{
+              margin: 0,
+              color: "#627188",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            Practice Quiz
+          </p>
+
+          <h1
+            style={{
+              margin: "6px 0 0",
+              color: "#0f274f",
+              fontSize: 27,
+              lineHeight: 1.3,
+            }}
+          >
+            {lecture.title}
+          </h1>
+        </div>
+
+        <div
+          className="card"
+          style={{
+            padding: "10px 16px",
+            borderRadius: 9,
+            color: "#0f274f",
+            fontSize: 14,
+            fontWeight: 700,
+          }}
+        >
+          {formatTime()}
+        </div>
+      </section>
+
+      {/* PROGRESS */}
+
+      <section
+        style={{
+          marginTop: 22,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            color: "#627188",
+            fontSize: 11,
+            fontWeight: 700,
+          }}
+        >
+          <span>
+            QUESTION {current + 1} OF {quizQuestions.length}
+          </span>
+
+          <span>{Math.round(progress)}% Complete</span>
+        </div>
+
+        <div
+          style={{
+            height: 5,
+            marginTop: 9,
+            borderRadius: 999,
+            overflow: "hidden",
+            background: "#e2e8f0",
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: "100%",
+              borderRadius: 999,
+              background: "#1687c9",
+            }}
+          />
+        </div>
+      </section>
+
+      {/* QUESTION */}
+
+      <section
+        className="card"
+        style={{
+          marginTop: 20,
+          padding: "26px 28px",
+          borderRadius: 15,
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            color: "#52647d",
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          Question {current + 1}
+        </p>
+
+        <h2
+          style={{
+            margin: "12px 0 0",
+            color: "#0f274f",
+            fontSize: 21,
+            lineHeight: 1.5,
+          }}
+        >
+          {question.question}
+        </h2>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 10,
+            marginTop: 22,
+          }}
+        >
+          {question.options.map((option, index) => (
+            <button
+              key={`${option}-${index}`}
+              type="button"
+              onClick={() => setSelected(index)}
+              style={{
+                width: "100%",
+                minHeight: 48,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "11px 14px",
+                border:
+                  selected === index
+                    ? "1px solid #84aee0"
+                    : "1px solid #dce1e8",
+                borderRadius: 9,
+                background: selected === index ? "#dce9fb" : "#ffffff",
+                color: "#475569",
+                fontSize: 14,
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 17,
+                  color: "#173b6d",
+                }}
+              >
+                {selected === index ? "●" : "○"}
+              </span>
+
+              {option}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* CONTROLS */}
+
+      <section
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          marginTop: 18,
+        }}
+      >
+        <button
+          type="button"
+          onClick={previousQuestion}
+          disabled={current === 0}
+          style={{
+            ...secondaryButtonStyle,
+            opacity: current === 0 ? 0.5 : 1,
+            cursor: current === 0 ? "not-allowed" : "pointer",
+          }}
+        >
+          Previous
+        </button>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+          }}
+        >
+          <button
+            type="button"
+            onClick={submitQuiz}
+            style={secondaryButtonStyle}
+          >
+            Submit Quiz
+          </button>
+
+          <button
+            type="button"
+            onClick={nextQuestion}
+            disabled={selected === null}
+            style={{
+              minHeight: 42,
+              padding: "9px 20px",
+              border: "none",
+              borderRadius: 9,
+              background: "#2f76d2",
+              color: "#ffffff",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: selected === null ? "not-allowed" : "pointer",
+              opacity: selected === null ? 0.55 : 1,
+            }}
+          >
+            {current === quizQuestions.length - 1 ? "Finish" : "Next"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
 
-function ResourceSidebar({ navigate }) {
-  return (
-    <aside className="resource-sidebar">
-      <div className="resource-brand">
-        <div className="resource-logo">L</div>
+const tabContainerStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 3,
+  padding: 4,
+  borderRadius: 12,
+  background: "#eef1f5",
+};
 
-        <div>
-          <h2>LectaAI</h2>
-          <span>Academic Portal</span>
-        </div>
-      </div>
+const tabStyle = {
+  minHeight: 36,
+  padding: "7px 14px",
+  border: "none",
+  borderRadius: 9,
+  background: "transparent",
+  color: "#53657d",
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "pointer",
+};
 
-      <nav className="resource-nav">
-        <button onClick={() => navigate("/dashboard")}>
-          ▦ &nbsp; Dashboard
-        </button>
+const activeTabStyle = {
+  ...tabStyle,
+  background: "#ffffff",
+  color: "#0f274f",
+  fontWeight: 600,
+  boxShadow: "0 1px 4px rgba(15, 39, 79, 0.12)",
+};
 
-        <button className="active" onClick={() => navigate("/subjects")}>
-          ▣ &nbsp; Subjects
-        </button>
-
-        <button onClick={() => navigate("/settings")}>⚙ &nbsp; Settings</button>
-      </nav>
-
-      <button className="resource-upload" onClick={() => navigate("/upload")}>
-        ↑ Upload Lecture
-      </button>
-    </aside>
-  );
-}
-
-function ResourceHeader() {
-  return (
-    <header className="resource-header">
-      <input className="resource-search" placeholder="Search..." />
-
-      <div className="resource-header-icons">
-        <span>♧</span>
-        <span>?</span>
-        <div className="resource-profile">A</div>
-      </div>
-    </header>
-  );
-}
+const secondaryButtonStyle = {
+  minHeight: 42,
+  padding: "9px 18px",
+  border: "1px solid #dce1e8",
+  borderRadius: 9,
+  background: "#ffffff",
+  color: "#53657d",
+  fontSize: 14,
+  fontWeight: 500,
+};

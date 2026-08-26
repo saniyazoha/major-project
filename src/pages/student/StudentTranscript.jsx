@@ -1,172 +1,315 @@
-import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { lectureData } from "../data/lectureData";
-import "../styles/LectureResources.css";
 
-export default function TranscriptPage() {
+import { lectures, lectureData } from "../../data/lectures";
+
+export default function StudentTranscript() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectureData[lectureId] || lectureData["lecture-04"];
+  /* =========================================================
+     SELECTED LECTURE
+  ========================================================= */
 
-  const downloadTranscript = () => {
-    const content = lecture.transcript
-      .map((item) => `${item.time}\n${item.text}`)
-      .join("\n\n");
+  const lecture = lectures.find(
+    (item) => String(item.id) === String(lectureId),
+  );
 
-    const blob = new Blob([content], {
-      type: "text/plain",
-    });
+  /*
+   * IMPORTANT:
+   * Load data ONLY through the selected lecture's dataId.
+   *
+   * Example:
+   *
+   * lecture.id = 1
+   * lecture.dataId = "lecture-1"
+   *
+   * Student sees only:
+   * lectureData["lecture-1"]
+   */
+  const selectedLectureData = lecture ? lectureData[lecture.dataId] : null;
 
-    const url = URL.createObjectURL(blob);
+  /*
+   * Students may view only broadcast/published lectures.
+   */
+  const isPublished = lecture?.broadcastStatus === "Broadcast";
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${lecture.title}-Transcript.txt`;
-    link.click();
+  /*
+   * Latest published transcript.
+   *
+   * This also supports a future publishedTranscript field.
+   * Once faculty publishing is connected to the backend,
+   * publishedTranscript should contain the latest approved
+   * published version.
+   */
+  const transcript =
+    selectedLectureData?.publishedTranscript ||
+    selectedLectureData?.transcript ||
+    [];
 
-    URL.revokeObjectURL(url);
+  /*
+   * Optional editor information.
+   */
+  const editedBy =
+    selectedLectureData?.transcriptEditedBy ||
+    selectedLectureData?.editedBy ||
+    selectedLectureData?.lastEditedBy ||
+    selectedLectureData?.updatedBy ||
+    lecture?.transcriptEditedBy ||
+    lecture?.editedBy ||
+    lecture?.lastEditedBy ||
+    lecture?.updatedBy ||
+    "";
+
+  const formatEditorName = (name) => {
+    if (!name) {
+      return "";
+    }
+
+    const cleanedName = String(name)
+      .replace(/^Ms\.\s*/i, "")
+      .replace(/^Mrs\.\s*/i, "")
+      .replace(/^Dr\.\s*/i, "")
+      .trim();
+
+    return `Edited by Ms. ${cleanedName}`;
   };
 
+  /* =========================================================
+     VALIDATION
+  ========================================================= */
+
+  if (!lecture) {
+    return (
+      <div className="page student-page">
+        <div
+          className="card student-resource-empty"
+          style={{
+            marginTop: 20,
+          }}
+        >
+          <h3>Lecture not found</h3>
+
+          <p>The requested lecture does not exist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isPublished) {
+    return (
+      <div className="page student-page">
+        <div
+          className="card student-resource-empty"
+          style={{
+            marginTop: 20,
+          }}
+        >
+          <h3>Lecture not available</h3>
+
+          <p>This lecture has not been published to students yet.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedLectureData) {
+    return (
+      <div className="page student-page">
+        <div
+          className="card student-resource-empty"
+          style={{
+            marginTop: 20,
+          }}
+        >
+          <h3>Transcript unavailable</h3>
+
+          <p>The published transcript for this lecture could not be found.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="resource-page">
-      <ResourceSidebar navigate={navigate} />
+    <div
+      className="page student-page"
+      style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+      }}
+    >
+      {/* =====================================================
+          RESOURCE TABS
 
-      <main className="resource-main">
-        <ResourceHeader />
+          Ask is intentionally display-only for now.
+      ===================================================== */}
 
-        <div className="resource-content">
+      <section>
+        <div style={tabContainerStyle}>
+          {/* NOTES */}
           <button
-            className="back-link"
-            onClick={() => navigate(`/student/lectures/${lectureId}`)}
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
           >
-            ← Back to Lecture
+            Notes
           </button>
 
-          <div className="resource-title-row">
-            <div className="resource-title">
-              <div className="resource-meta">
-                <span className="badge">{lecture.code}</span>
-                <span>{lecture.week}</span>
-              </div>
+          {/* SUMMARY */}
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/summary`)}
+          >
+            Summary
+          </button>
 
-              <h1>{lecture.title}</h1>
+          {/* FLASHCARDS */}
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() =>
+              navigate(`/student/lectures/${lecture.id}/flashcards`)
+            }
+          >
+            Flashcards
+          </button>
 
-              <div className="resource-meta">
-                <span>♟ {lecture.lecturer}</span>
-                <span>▣ {lecture.date}</span>
-                <span>◷ {lecture.duration}</span>
-              </div>
-            </div>
+          {/* QUIZ */}
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/quiz`)}
+          >
+            Quiz
+          </button>
 
-            <button className="primary-button" onClick={downloadTranscript}>
-              ↓ Download Transcript
-            </button>
-          </div>
+          {/* TRANSCRIPT - ACTIVE */}
+          <button type="button" style={activeTabStyle}>
+            Transcript
+          </button>
 
-          <div className="transcript-layout">
-            <section className="transcript-panel">
-              <div className="audio-bar">
-                <button>▶</button>
-
-                <div className="audio-progress">
-                  <div />
-                </div>
-
-                <span>14:32 / 1:15:00</span>
-
-                <span>1×</span>
-                <span>⚙</span>
-              </div>
-
-              <div className="transcript-list">
-                {lecture.transcript.map((item, index) => (
-                  <div
-                    className={`transcript-item ${
-                      index === 2 ? "transcript-active" : ""
-                    }`}
-                    key={index}
-                  >
-                    <span className="transcript-time">{item.time}</span>
-
-                    <p>{item.text}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <aside className="transcript-side">
-              <div className="side-card">
-                <h3>✦ AI Summary</h3>
-
-                {lecture.summary.map((item, index) => (
-                  <p key={index}>• {item}</p>
-                ))}
-              </div>
-
-              <div className="side-card">
-                <h3>♧ Key Terms</h3>
-
-                {lecture.concepts.slice(0, 2).map((concept) => (
-                  <div className="key-term" key={concept.title}>
-                    <strong>{concept.title}</strong>
-
-                    <small>{concept.description}</small>
-                  </div>
-                ))}
-              </div>
-            </aside>
-          </div>
+          {/* ASK
+              Do not add functionality yet.
+          */}
+          <button type="button" style={tabStyle}>
+            Ask
+          </button>
         </div>
-      </main>
+      </section>
+
+      {/* =====================================================
+          EDIT INFORMATION
+      ===================================================== */}
+
+      {editedBy && (
+        <p
+          style={{
+            margin: "12px 0 0",
+            color: "#64748b",
+            fontSize: 11,
+            fontStyle: "italic",
+          }}
+        >
+          {formatEditorName(editedBy)}
+        </p>
+      )}
+
+      {/* =====================================================
+          TRANSCRIPT
+      ===================================================== */}
+
+      {transcript.length === 0 ? (
+        <div
+          className="card student-resource-empty"
+          style={{
+            marginTop: 18,
+          }}
+        >
+          <h3>Transcript unavailable</h3>
+
+          <p>
+            No published transcript is currently available for this lecture.
+          </p>
+        </div>
+      ) : (
+        <section
+          className="card"
+          style={{
+            marginTop: 18,
+            padding: 0,
+            borderRadius: 15,
+            overflow: "hidden",
+          }}
+        >
+          {transcript.map((item, index) => (
+            <div
+              key={`${item.time}-${index}`}
+              style={{
+                padding: "20px 24px",
+                borderBottom:
+                  index === transcript.length - 1
+                    ? "none"
+                    : "1px solid #e2e8f0",
+              }}
+            >
+              <div
+                style={{
+                  color: "#52647d",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                }}
+              >
+                {item.time}
+              </div>
+
+              <p
+                style={{
+                  margin: "8px 0 0",
+                  color: "#0f274f",
+                  fontSize: 15,
+                  lineHeight: 1.7,
+                }}
+              >
+                {item.text}
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
 
-/* Shared sidebar */
-function ResourceSidebar({ navigate }) {
-  return (
-    <aside className="resource-sidebar">
-      <div className="resource-brand">
-        <div className="resource-logo">L</div>
+/* =========================================================
+   TAB STYLES
+========================================================= */
 
-        <div>
-          <h2>LectaAI</h2>
-          <span>ACADEMIC PORTAL</span>
-        </div>
-      </div>
+const tabContainerStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 3,
+  padding: 4,
+  borderRadius: 12,
+  background: "#eef1f5",
+};
 
-      <nav className="resource-nav">
-        <button onClick={() => navigate("/dashboard")}>
-          ▦ &nbsp; Dashboard
-        </button>
+const tabStyle = {
+  minHeight: 36,
+  padding: "7px 14px",
+  border: "none",
+  borderRadius: 9,
+  background: "transparent",
+  color: "#53657d",
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "pointer",
+};
 
-        <button className="active" onClick={() => navigate("/subjects")}>
-          ▣ &nbsp; Subjects
-        </button>
-
-        <button onClick={() => navigate("/settings")}>⚙ &nbsp; Settings</button>
-      </nav>
-
-      <button className="resource-upload" onClick={() => navigate("/upload")}>
-        ↑ Upload Lecture
-      </button>
-    </aside>
-  );
-}
-
-/* Header */
-
-function ResourceHeader() {
-  return (
-    <header className="resource-header">
-      <input className="resource-search" placeholder="Search lectures..." />
-
-      <div className="resource-header-icons">
-        <span>♧</span>
-        <span>?</span>
-        <div className="resource-profile">A</div>
-      </div>
-    </header>
-  );
-}
+const activeTabStyle = {
+  ...tabStyle,
+  background: "#ffffff",
+  color: "#0f274f",
+  fontWeight: 600,
+  boxShadow: "0 1px 4px rgba(15, 39, 79, 0.12)",
+};

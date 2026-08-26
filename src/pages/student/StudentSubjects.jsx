@@ -18,29 +18,35 @@ export default function StudentSubjects() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const subjectProgress = useMemo(() => {
-    return subjects.map((subject) => {
-      const subjectLectures = lectures.filter(
-        (lecture) => String(lecture.subjectId) === String(subject.id),
-      );
+    return subjects
+      .map((subject) => {
+        const subjectLectures = lectures.filter(
+          (lecture) =>
+            String(lecture.subjectId) === String(subject.id) &&
+            lecture.broadcastStatus === "Broadcast",
+        );
 
-      const completed = subjectLectures.filter(
-        (lecture) => lecture.status === "Processed",
-      ).length;
+        if (subjectLectures.length === 0) {
+          return null;
+        }
 
-      const total = subject.lectures ?? subjectLectures.length;
+        const completed = subjectLectures.filter(
+          (lecture) => lecture.status === "Processed",
+        ).length;
 
-      const progress =
-        typeof subject.progress === "number"
-          ? subject.progress
-          : Math.round((completed / Math.max(1, total)) * 100);
+        const total = subjectLectures.length;
 
-      return {
-        ...subject,
-        completed,
-        total,
-        progress,
-      };
-    });
+        const progress =
+          total === 0 ? 0 : Math.round((completed / total) * 100);
+
+        return {
+          ...subject,
+          completed,
+          total,
+          progress,
+        };
+      })
+      .filter(Boolean);
   }, []);
 
   const filteredSubjects = useMemo(() => {
@@ -226,7 +232,6 @@ export default function StudentSubjects() {
                   }
                 }}
               >
-                {/* Card top */}
                 <div className="student-subject-card-top">
                   <div className="student-subject-icon">
                     <BookOpen size={20} />
@@ -237,7 +242,6 @@ export default function StudentSubjects() {
                   </span>
                 </div>
 
-                {/* Subject name */}
                 <div>
                   <h3>{subject.name}</h3>
 
@@ -246,7 +250,6 @@ export default function StudentSubjects() {
                   )}
                 </div>
 
-                {/* Progress */}
                 <div className="student-subject-progress">
                   <div className="student-subject-progress-label">
                     <span>Learning Progress</span>
@@ -267,7 +270,6 @@ export default function StudentSubjects() {
                   </div>
                 </div>
 
-                {/* Footer */}
                 <div className="student-subject-card-footer">
                   <span>
                     {subject.completed} of {subject.total} lectures completed
