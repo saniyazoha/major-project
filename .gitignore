@@ -6,3 +6,22 @@ dist/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Python & Pytest Caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Audio & Lecture uploads
+backend/uploads/
+uploads/
