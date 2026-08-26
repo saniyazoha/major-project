@@ -97,7 +97,13 @@ export default function StudentFlashcards() {
 
   if (flashcards.length === 0) {
     return (
-      <div className="page student-page">
+      <div
+        className="page student-page"
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
         <section>
           <div style={tabContainerStyle}>
             <button
@@ -130,7 +136,11 @@ export default function StudentFlashcards() {
               Transcript
             </button>
 
-            <button type="button" style={tabStyle}>
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+            >
               Ask
             </button>
           </div>
@@ -138,6 +148,7 @@ export default function StudentFlashcards() {
 
         <div className="card student-resource-empty" style={{ marginTop: 18 }}>
           <h3>Flashcards unavailable</h3>
+
           <p>
             No published flashcards are currently available for this lecture.
           </p>
@@ -190,7 +201,11 @@ export default function StudentFlashcards() {
             Transcript
           </button>
 
-          <button type="button" style={tabStyle}>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+          >
             Ask
           </button>
         </div>

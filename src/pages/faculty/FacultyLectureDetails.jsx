@@ -15,6 +15,7 @@ import {
   CheckCircle,
   Plus,
   Trash2,
+  MessageCircleQuestion,
 } from "lucide-react";
 
 import { useMemo, useState } from "react";
@@ -1853,6 +1854,31 @@ The Operating System acts as the main controller of a computer system. It coordi
         >
           <Users size={16} />
           Student Progress
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate(`/faculty/lectures/${lecture.id}/doubts`)}
+          style={{
+            minHeight: 44,
+            border: "none",
+            borderBottom: "2px solid transparent",
+            background: "transparent",
+            color: "#667085",
+            padding: "0 14px",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 7,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            borderRadius: 0,
+          }}
+        >
+          <MessageCircleQuestion size={16} />
+          Doubt Session
         </button>
       </section>
 

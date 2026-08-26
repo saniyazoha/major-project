@@ -540,9 +540,11 @@ ${editedBy ? formatEditorName(editedBy) : ""}
             Transcript
           </button>
 
-          {/* ASK - DO NOT MODIFY YET */}
-
-          <button type="button" style={tabStyle}>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+          >
             Ask
           </button>
         </div>

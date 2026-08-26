@@ -140,7 +140,7 @@ export default function StudentTranscript() {
       {/* =====================================================
           RESOURCE TABS
 
-          Ask is intentionally display-only for now.
+          Ask opens the lecture-specific Q&A page.
       ===================================================== */}
 
       <section>
@@ -152,15 +152,6 @@ export default function StudentTranscript() {
             onClick={() => navigate(`/student/lectures/${lecture.id}`)}
           >
             Notes
-          </button>
-
-          {/* SUMMARY */}
-          <button
-            type="button"
-            style={tabStyle}
-            onClick={() => navigate(`/student/lectures/${lecture.id}/summary`)}
-          >
-            Summary
           </button>
 
           {/* FLASHCARDS */}
@@ -188,10 +179,11 @@ export default function StudentTranscript() {
             Transcript
           </button>
 
-          {/* ASK
-              Do not add functionality yet.
-          */}
-          <button type="button" style={tabStyle}>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+          >
             Ask
           </button>
         </div>

@@ -194,7 +194,11 @@ export default function StudentQuiz() {
               Transcript
             </button>
 
-            <button type="button" style={tabStyle}>
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+            >
               Ask
             </button>
           </div>
@@ -251,7 +255,11 @@ export default function StudentQuiz() {
               Transcript
             </button>
 
-            <button type="button" style={tabStyle}>
+            <button
+              type="button"
+              style={tabStyle}
+              onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+            >
               Ask
             </button>
           </div>
@@ -371,7 +379,11 @@ export default function StudentQuiz() {
             Transcript
           </button>
 
-          <button type="button" style={tabStyle}>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+          >
             Ask
           </button>
         </div>

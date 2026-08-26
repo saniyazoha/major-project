@@ -15,13 +15,37 @@ function StudentLectureDetails() {
 
   const isPublished = lecture?.broadcastStatus === "Broadcast";
 
+  const transcript =
+    selectedLectureData?.publishedTranscript ||
+    selectedLectureData?.transcript ||
+    [];
+  const notes =
+    selectedLectureData?.publishedNotes ||
+    selectedLectureData?.notes ||
+    selectedLectureData?.summary ||
+    [];
+  const flashcards =
+    selectedLectureData?.publishedFlashcards ||
+    selectedLectureData?.flashcards ||
+    [];
+  const quiz =
+    selectedLectureData?.publishedQuiz || selectedLectureData?.quiz || [];
+
   const editedBy =
-    lecture?.editedBy ||
-    lecture?.lastEditedBy ||
-    lecture?.updatedBy ||
+    selectedLectureData?.notesEditedBy ||
+    selectedLectureData?.flashcardsEditedBy ||
+    selectedLectureData?.transcriptEditedBy ||
+    selectedLectureData?.quizEditedBy ||
     selectedLectureData?.editedBy ||
     selectedLectureData?.lastEditedBy ||
     selectedLectureData?.updatedBy ||
+    lecture?.notesEditedBy ||
+    lecture?.flashcardsEditedBy ||
+    lecture?.transcriptEditedBy ||
+    lecture?.quizEditedBy ||
+    lecture?.editedBy ||
+    lecture?.lastEditedBy ||
+    lecture?.updatedBy ||
     "";
 
   const formatEditorName = (name) => {
@@ -59,25 +83,23 @@ function StudentLectureDetails() {
     let content = "";
 
     if (type === "transcript") {
-      content = selectedLectureData.transcript
+      content = transcript
         ?.map((item) => `${item.time}\n${item.text}`)
         .join("\n\n");
     }
 
     if (type === "notes") {
-      content = selectedLectureData.summary
-        ?.map((item) => `• ${item}`)
-        .join("\n");
+      content = notes?.map((item) => `• ${item}`).join("\n");
     }
 
     if (type === "flashcards") {
-      content = selectedLectureData.flashcards
+      content = flashcards
         ?.map((item, index) => `${index + 1}. ${item.question}\n${item.answer}`)
         .join("\n\n");
     }
 
     if (type === "quiz") {
-      content = selectedLectureData.quiz
+      content = quiz
         ?.map(
           (item, index) =>
             `${index + 1}. ${item.question}\n${item.options
@@ -110,22 +132,18 @@ function StudentLectureDetails() {
     }
 
     const transcript =
-      selectedLectureData.transcript
-        ?.map((item) => `${item.time} ${item.text}`)
-        .join("\n") || "";
+      transcript?.map((item) => `${item.time} ${item.text}`).join("\n") || "";
 
-    const notes =
-      selectedLectureData.summary?.map((item) => `• ${item}`).join("\n") || "";
+    const notes = notes?.map((item) => `• ${item}`).join("\n") || "";
 
     const flashcards =
-      selectedLectureData.flashcards
+      flashcards
         ?.map((item, index) => `${index + 1}. ${item.question}\n${item.answer}`)
         .join("\n\n") || "";
 
     const quiz =
-      selectedLectureData.quiz
-        ?.map((item, index) => `${index + 1}. ${item.question}`)
-        .join("\n") || "";
+      quiz?.map((item, index) => `${index + 1}. ${item.question}`).join("\n") ||
+      "";
 
     const content = `
 ${lecture.title}
@@ -246,11 +264,7 @@ ${quiz}
         Back to dashboard
       </button>
 
-      <section
-        style={{
-          marginTop: 22,
-        }}
-      >
+      <section style={{ marginTop: 22 }}>
         <h1
           style={{
             margin: 0,
@@ -406,11 +420,7 @@ ${quiz}
         </div>
       </section>
 
-      <section
-        style={{
-          marginTop: 28,
-        }}
-      >
+      <section style={{ marginTop: 28 }}>
         <div
           style={{
             display: "inline-flex",
@@ -457,7 +467,11 @@ ${quiz}
             Transcript
           </button>
 
-          <button type="button" style={tabButtonStyle}>
+          <button
+            type="button"
+            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+            style={tabButtonStyle}
+          >
             Ask
           </button>
         </div>
@@ -491,7 +505,7 @@ ${quiz}
               lineHeight: 1.8,
             }}
           >
-            {selectedLectureData.summary?.[0] ||
+            {notes?.[0] ||
               `Review the published learning material for ${lecture.title}.`}
           </p>
 

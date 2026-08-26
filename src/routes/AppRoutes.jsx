@@ -18,6 +18,8 @@ import FacultySubjectDetails from "../pages/faculty/FacultySubjectDetails";
 import FacultyLectureDetails from "../pages/faculty/FacultyLectureDetails";
 import FacultyAnalytics from "../pages/faculty/FacultyAnalytics";
 import FacultySettings from "../pages/faculty/FacultySettings";
+import FacultyDoubtSession from "../pages/faculty/FacultyDoubtSession";
+import FacultyDoubtDetails from "../pages/faculty/FacultyDoubtDetails";
 
 import FacultyStudentProgress from "../pages/faculty/StudentProgress";
 import StudentProgressDetails from "../pages/faculty/StudentProgressDetails";
@@ -33,8 +35,6 @@ import StudentLectureDetails from "../pages/student/StudentLectureDetails";
 
 import StudentNotes from "../pages/student/StudentNotes";
 import StudentTranscript from "../pages/student/StudentTranscript";
-import StudentSummary from "../pages/student/StudentSummary";
-import StudentKeyConcepts from "../pages/student/StudentKeyConcepts";
 import StudentFlashcards from "../pages/student/StudentFlashcards";
 import StudentQuiz from "../pages/student/StudentQuiz";
 import StudentQA from "../pages/student/StudentQA";
@@ -82,6 +82,16 @@ function AppRoutes() {
         <Route path="subjects/:subjectId" element={<FacultySubjectDetails />} />
 
         <Route path="lectures/:lectureId" element={<FacultyLectureDetails />} />
+
+        <Route
+          path="lectures/:lectureId/doubts"
+          element={<FacultyDoubtSession />}
+        />
+
+        <Route
+          path="lectures/:lectureId/doubts/:doubtId"
+          element={<FacultyDoubtDetails />}
+        />
 
         <Route
           path="subjects/:subjectId/lecturers/:lecturerId"
@@ -148,24 +158,6 @@ function AppRoutes() {
         <Route
           path="lectures/:lectureId/transcript"
           element={<StudentTranscript />}
-        />
-
-        {/* =========================
-            STUDENT SUMMARY
-        ========================= */}
-
-        <Route
-          path="lectures/:lectureId/summary"
-          element={<StudentSummary />}
-        />
-
-        {/* =========================
-            STUDENT KEY CONCEPTS
-        ========================= */}
-
-        <Route
-          path="lectures/:lectureId/key-concepts"
-          element={<StudentKeyConcepts />}
         />
 
         {/* =========================

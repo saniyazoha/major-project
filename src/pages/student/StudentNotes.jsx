@@ -6,10 +6,6 @@ export default function StudentNotes() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  /* =========================================================
-     SELECTED LECTURE
-  ========================================================= */
-
   const lecture = lectures.find(
     (item) => String(item.id) === String(lectureId),
   );
@@ -18,41 +14,23 @@ export default function StudentNotes() {
 
   const isPublished = lecture?.broadcastStatus === "Broadcast";
 
-  /*
-   * Latest published notes.
-   *
-   * If faculty publishing later provides publishedNotes,
-   * that will automatically take priority.
-   */
   const notes =
     selectedLectureData?.publishedNotes ||
     selectedLectureData?.notes ||
     selectedLectureData?.summary ||
     [];
 
-  /*
-   * Optional detailed note sections.
-   *
-   * If the backend later provides publishedNoteSections,
-   * those will take priority.
-   */
   const noteSections =
     selectedLectureData?.publishedNoteSections ||
     selectedLectureData?.noteSections ||
     selectedLectureData?.concepts ||
     [];
 
-  /*
-   * Optional glossary.
-   */
   const glossary =
     selectedLectureData?.publishedGlossary ||
     selectedLectureData?.glossary ||
     [];
 
-  /*
-   * Optional edit metadata.
-   */
   const editedBy =
     selectedLectureData?.notesEditedBy ||
     selectedLectureData?.editedBy ||
@@ -78,16 +56,11 @@ export default function StudentNotes() {
     return `Edited by Ms. ${cleanedName}`;
   };
 
-  /* =========================================================
-     VALIDATION
-  ========================================================= */
-
   if (!lecture) {
     return (
       <div className="page student-page">
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
           <h3>Lecture not found</h3>
-
           <p>The requested lecture does not exist.</p>
         </div>
       </div>
@@ -99,7 +72,6 @@ export default function StudentNotes() {
       <div className="page student-page">
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
           <h3>Lecture not available</h3>
-
           <p>This lecture has not been published to students yet.</p>
         </div>
       </div>
@@ -111,7 +83,6 @@ export default function StudentNotes() {
       <div className="page student-page">
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
           <h3>Notes unavailable</h3>
-
           <p>Published notes could not be found for this lecture.</p>
         </div>
       </div>
@@ -126,10 +97,6 @@ export default function StudentNotes() {
         margin: "0 auto",
       }}
     >
-      {/* =====================================================
-          RESOURCE TABS
-      ===================================================== */}
-
       <section>
         <div style={tabContainerStyle}>
           <button type="button" style={activeTabStyle}>
@@ -164,15 +131,15 @@ export default function StudentNotes() {
             Transcript
           </button>
 
-          <button type="button" style={tabStyle}>
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+          >
             Ask
           </button>
         </div>
       </section>
-
-      {/* =====================================================
-          SUMMARY / NOTES INTRO
-      ===================================================== */}
 
       <section
         className="card"
@@ -251,10 +218,6 @@ export default function StudentNotes() {
         )}
       </section>
 
-      {/* =====================================================
-          DETAILED NOTES
-      ===================================================== */}
-
       {noteSections.map((section, index) => {
         const title =
           typeof section === "string" ? `Note ${index + 1}` : section.title;
@@ -332,10 +295,6 @@ export default function StudentNotes() {
           </section>
         );
       })}
-
-      {/* =====================================================
-          GLOSSARY
-      ===================================================== */}
 
       {glossary.length > 0 && (
         <section
