@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, Download, FileText } from "lucide-react";
+import { jsPDF } from "jspdf";
 
 import { lectures, lectureData } from "../../data/lectures";
 
@@ -19,15 +20,18 @@ function StudentLectureDetails() {
     selectedLectureData?.publishedTranscript ||
     selectedLectureData?.transcript ||
     [];
+
   const notes =
     selectedLectureData?.publishedNotes ||
     selectedLectureData?.notes ||
     selectedLectureData?.summary ||
     [];
+
   const flashcards =
     selectedLectureData?.publishedFlashcards ||
     selectedLectureData?.flashcards ||
     [];
+
   const quiz =
     selectedLectureData?.publishedQuiz || selectedLectureData?.quiz || [];
 
@@ -75,105 +79,418 @@ function StudentLectureDetails() {
     return duration;
   };
 
+  /* =========================================================
+     PDF HELPERS
+  ========================================================= */
+
+  const sanitizeFileName = (value) => {
+    return String(value || "lecture")
+      .replace(/[<>:"/\\|?*]/g, "")
+      .trim()
+      .replace(/\s+/g, "-");
+  };
+
+  const addWrappedText = (doc, text, x, y, maxWidth = 170, lineHeight = 7) => {
+    const lines = doc.splitTextToSize(String(text || ""), maxWidth);
+
+    lines.forEach((line) => {
+      if (y > 280) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.text(line, x, y);
+      y += lineHeight;
+    });
+
+    return y;
+  };
+
+  const addPdfTitle = (doc, resourceTitle) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+
+    doc.text(lecture.title, 20, 20);
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+
+    doc.text(
+      `${lecture.subjectCode || ""} ${lecture.batch || ""}`.trim(),
+      20,
+      28,
+    );
+
+    doc.text(
+      `${lecture.date || ""} ${
+        lecture.duration ? `• ${formatDuration(lecture.duration)}` : ""
+      }`,
+      20,
+      35,
+    );
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+
+    doc.text(resourceTitle, 20, 48);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+
+    return 58;
+  };
+
+  /* =========================================================
+     DOWNLOAD INDIVIDUAL MATERIAL
+  ========================================================= */
+
   const downloadMaterial = (type) => {
     if (!lecture || !selectedLectureData) {
       return;
     }
 
-    let content = "";
+    const doc = new jsPDF();
+    let y = 20;
 
     if (type === "transcript") {
-      content = transcript
-        ?.map((item) => `${item.time}\n${item.text}`)
-        .join("\n\n");
+      y = addPdfTitle(doc, "Transcript");
+
+      if (transcript.length === 0) {
+        addWrappedText(doc, "No published transcript is available.", 20, y);
+      } else {
+        transcript.forEach((item) => {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.text(String(item.time || ""), 20, y);
+
+          doc.setFont("helvetica", "normal");
+
+          y = addWrappedText(doc, item.text || "", 38, y, 150);
+
+          y += 5;
+        });
+      }
     }
 
     if (type === "notes") {
-      content = notes?.map((item) => `• ${item}`).join("\n");
+      y = addPdfTitle(doc, "Notes");
+
+      if (notes.length === 0) {
+        addWrappedText(doc, "No published notes are available.", 20, y);
+      } else {
+        notes.forEach((item, index) => {
+          y = addWrappedText(doc, `${index + 1}. ${item}`, 20, y);
+
+          y += 4;
+        });
+      }
+
+      if (selectedLectureData?.concepts?.length > 0) {
+        y += 5;
+
+        if (y > 265) {
+          doc.addPage();
+          y = 20;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.text("Key Concepts", 20, y);
+
+        y += 10;
+
+        doc.setFontSize(11);
+
+        selectedLectureData.concepts.forEach((concept) => {
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          y = addWrappedText(doc, concept.title || "", 20, y);
+
+          doc.setFont("helvetica", "normal");
+          y = addWrappedText(doc, concept.description || "", 20, y);
+
+          y += 5;
+        });
+      }
     }
 
     if (type === "flashcards") {
-      content = flashcards
-        ?.map((item, index) => `${index + 1}. ${item.question}\n${item.answer}`)
-        .join("\n\n");
+      y = addPdfTitle(doc, "Flashcards");
+
+      if (flashcards.length === 0) {
+        addWrappedText(doc, "No published flashcards are available.", 20, y);
+      } else {
+        flashcards.forEach((item, index) => {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+
+          y = addWrappedText(
+            doc,
+            `${index + 1}. Question: ${item.question}`,
+            20,
+            y,
+          );
+
+          doc.setFont("helvetica", "normal");
+
+          y = addWrappedText(doc, `Answer: ${item.answer}`, 20, y);
+
+          y += 7;
+        });
+      }
     }
 
     if (type === "quiz") {
-      content = quiz
-        ?.map(
-          (item, index) =>
-            `${index + 1}. ${item.question}\n${item.options
-              .map(
-                (option, optionIndex) =>
-                  `${String.fromCharCode(65 + optionIndex)}. ${option}`,
-              )
-              .join("\n")}`,
-        )
-        .join("\n\n");
+      y = addPdfTitle(doc, "Practice Quiz");
+
+      if (quiz.length === 0) {
+        addWrappedText(doc, "No published quiz is available.", 20, y);
+      } else {
+        quiz.forEach((item, index) => {
+          if (y > 235) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+
+          y = addWrappedText(doc, `${index + 1}. ${item.question}`, 20, y);
+
+          doc.setFont("helvetica", "normal");
+
+          item.options?.forEach((option, optionIndex) => {
+            y = addWrappedText(
+              doc,
+              `${String.fromCharCode(65 + optionIndex)}. ${option}`,
+              28,
+              y,
+              160,
+            );
+          });
+
+          if (typeof item.answer === "number" && item.options?.[item.answer]) {
+            y += 2;
+
+            doc.setFont("helvetica", "bold");
+
+            y = addWrappedText(
+              doc,
+              `Answer: ${String.fromCharCode(
+                65 + item.answer,
+              )}. ${item.options[item.answer]}`,
+              28,
+              y,
+              160,
+            );
+
+            doc.setFont("helvetica", "normal");
+          }
+
+          y += 7;
+        });
+      }
     }
 
-    const blob = new Blob([`${lecture.title}\n\n${content || ""}`], {
-      type: "application/pdf",
-    });
+    if (editedBy) {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
 
-    const url = URL.createObjectURL(blob);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
 
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${lecture.title}-${type}.pdf`;
-    anchor.click();
+      doc.text(formatEditorName(editedBy), 20, y + 8);
+    }
 
-    URL.revokeObjectURL(url);
+    const fileName = sanitizeFileName(lecture.title);
+
+    doc.save(`${fileName}-${type}.pdf`);
   };
+
+  /* =========================================================
+     FULL STUDY PACK PDF
+  ========================================================= */
 
   const downloadFullStudyPack = () => {
     if (!lecture || !selectedLectureData) {
       return;
     }
 
-    const transcript =
-      transcript?.map((item) => `${item.time} ${item.text}`).join("\n") || "";
+    const doc = new jsPDF();
 
-    const notes = notes?.map((item) => `• ${item}`).join("\n") || "";
+    let y = addPdfTitle(doc, "Full Study Pack");
 
-    const flashcards =
-      flashcards
-        ?.map((item, index) => `${index + 1}. ${item.question}\n${item.answer}`)
-        .join("\n\n") || "";
+    /* =========================
+       TRANSCRIPT
+    ========================= */
 
-    const quiz =
-      quiz?.map((item, index) => `${index + 1}. ${item.question}`).join("\n") ||
-      "";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
 
-    const content = `
-${lecture.title}
+    doc.text("Transcript", 20, y);
 
-TRANSCRIPT
-${transcript}
+    y += 10;
 
-NOTES
-${notes}
+    doc.setFontSize(11);
 
-FLASHCARDS
-${flashcards}
+    transcript.forEach((item) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
 
-QUIZ
-${quiz}
-`;
+      doc.setFont("helvetica", "bold");
+      doc.text(String(item.time || ""), 20, y);
 
-    const blob = new Blob([content], {
-      type: "application/pdf",
+      doc.setFont("helvetica", "normal");
+
+      y = addWrappedText(doc, item.text || "", 38, y, 150);
+
+      y += 4;
     });
 
-    const url = URL.createObjectURL(blob);
+    /* =========================
+       NOTES
+    ========================= */
 
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${lecture.title}-study-pack.pdf`;
-    anchor.click();
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
 
-    URL.revokeObjectURL(url);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+
+    doc.text("Notes", 20, y);
+
+    y += 10;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+
+    notes.forEach((item, index) => {
+      y = addWrappedText(doc, `${index + 1}. ${item}`, 20, y);
+
+      y += 3;
+    });
+
+    /* =========================
+       FLASHCARDS
+    ========================= */
+
+    if (y > 245) {
+      doc.addPage();
+      y = 20;
+    }
+
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+
+    doc.text("Flashcards", 20, y);
+
+    y += 10;
+
+    doc.setFontSize(11);
+
+    flashcards.forEach((item, index) => {
+      if (y > 245) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFont("helvetica", "bold");
+
+      y = addWrappedText(doc, `${index + 1}. ${item.question}`, 20, y);
+
+      doc.setFont("helvetica", "normal");
+
+      y = addWrappedText(doc, `Answer: ${item.answer}`, 20, y);
+
+      y += 5;
+    });
+
+    /* =========================
+       QUIZ
+    ========================= */
+
+    if (y > 235) {
+      doc.addPage();
+      y = 20;
+    }
+
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+
+    doc.text("Practice Quiz", 20, y);
+
+    y += 10;
+
+    doc.setFontSize(11);
+
+    quiz.forEach((item, index) => {
+      if (y > 225) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFont("helvetica", "bold");
+
+      y = addWrappedText(doc, `${index + 1}. ${item.question}`, 20, y);
+
+      doc.setFont("helvetica", "normal");
+
+      item.options?.forEach((option, optionIndex) => {
+        y = addWrappedText(
+          doc,
+          `${String.fromCharCode(65 + optionIndex)}. ${option}`,
+          28,
+          y,
+          160,
+        );
+      });
+
+      y += 5;
+    });
+
+    if (editedBy) {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+
+      doc.text(formatEditorName(editedBy), 20, y + 8);
+    }
+
+    const fileName = sanitizeFileName(lecture.title);
+
+    doc.save(`${fileName}-full-study-pack.pdf`);
   };
+
+  /* =========================================================
+     VALIDATION
+  ========================================================= */
 
   if (!lecture) {
     return (
@@ -285,43 +602,16 @@ ${quiz}
             marginTop: 10,
           }}
         >
-          <span
-            style={{
-              padding: "4px 9px",
-              borderRadius: 999,
-              background: "#eef2f7",
-              color: "#627188",
-              fontSize: 11,
-              fontWeight: 600,
-            }}
-          >
-            {lecture.subjectCode}
-          </span>
+          <span style={metaChipStyle}>{lecture.subjectCode}</span>
+
+          <span style={metaChipStyle}>{lecture.batch}</span>
 
           <span
             style={{
-              padding: "4px 9px",
-              borderRadius: 999,
-              background: "#eef2f7",
-              color: "#627188",
-              fontSize: 11,
-              fontWeight: 600,
-            }}
-          >
-            {lecture.batch}
-          </span>
-
-          <span
-            style={{
+              ...metaChipStyle,
               display: "inline-flex",
               alignItems: "center",
               gap: 5,
-              padding: "4px 9px",
-              borderRadius: 999,
-              background: "#eef2f7",
-              color: "#627188",
-              fontSize: 11,
-              fontWeight: 600,
             }}
           >
             <Clock size={12} />
@@ -421,16 +711,7 @@ ${quiz}
       </section>
 
       <section style={{ marginTop: 28 }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 3,
-            padding: 4,
-            borderRadius: 12,
-            background: "#eef1f5",
-          }}
-        >
+        <div style={tabContainerStyle}>
           <button
             type="button"
             onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
@@ -553,6 +834,15 @@ ${quiz}
   );
 }
 
+const metaChipStyle = {
+  padding: "4px 9px",
+  borderRadius: 999,
+  background: "#eef2f7",
+  color: "#627188",
+  fontSize: 11,
+  fontWeight: 600,
+};
+
 const materialButtonStyle = {
   minHeight: 38,
   display: "inline-flex",
@@ -567,6 +857,15 @@ const materialButtonStyle = {
   fontSize: 12,
   fontWeight: 600,
   cursor: "pointer",
+};
+
+const tabContainerStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 3,
+  padding: 4,
+  borderRadius: 12,
+  background: "#eef1f5",
 };
 
 const tabButtonStyle = {

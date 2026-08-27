@@ -96,7 +96,7 @@ export default function StudentProgress() {
       {/* Back */}
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate("/faculty/dashboard")}
         style={{
           border: "none",
           background: "transparent",
