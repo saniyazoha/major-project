@@ -7,7 +7,7 @@ from app.api.dependencies import get_current_user, require_faculty
 from app.schemas.lecture import LectureResponse
 from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
 from app.models.transcript import Transcript
-from app.services import lecture_service, storage_service, transcript_processing_service
+from app.services import lecture_service, storage_service, transcript_processing_service, generation_service
 
 router = APIRouter(prefix="/lectures", tags=["lectures"])
 
@@ -162,6 +162,50 @@ def trigger_transcription(
     return {"lecture_id": lecture_id, "status": "processing"}
 
 
+@router.post("/{lecture_id}/generate", status_code=status.HTTP_202_ACCEPTED)
+def trigger_generation(
+    lecture_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_faculty: dict = Depends(require_faculty),
+):
+    """Faculty endpoint to trigger LLM content generation via background task."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_faculty["user_id"],
+        role="faculty",
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    transcript = db.query(Transcript).filter(Transcript.lecture_id == lecture_id).first()
+    if not transcript or transcript.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Transcript is missing or not completed for generation",
+        )
+
+    if lecture.status in ("draft", "broadcast"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Generation not allowed for lecture in status '{lecture.status}'",
+        )
+
+    background_tasks.add_task(
+        generation_service.process_lecture_generation,
+        db,
+        lecture_id,
+    )
+    return {"lecture_id": lecture_id, "message": "Generation task initiated successfully"}
+
+
 @router.get("/{lecture_id}/transcript", response_model=TranscriptResponse, status_code=status.HTTP_200_OK)
 def get_transcript(
     lecture_id: int,
@@ -214,6 +258,13 @@ def update_transcript_correction(
     if error == "ACCESS_DENIED":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    # Protect transcript correction after successful generation
+    if lecture.status in ("draft", "broadcast"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Transcript correction not allowed for lecture in status '{lecture.status}'",
         )
 
     transcript, err = transcript_processing_service.update_corrected_transcript(

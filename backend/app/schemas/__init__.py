@@ -10,6 +10,12 @@ from app.schemas.academic import (
 )
 from app.schemas.lecture import LectureResponse
 from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
+from app.schemas.generation import (
+    NoteResponse,
+    FlashcardResponse,
+    QuizResponse,
+    GlossaryResponse,
+)
 
 __all__ = [
     "LoginRequest",
@@ -24,4 +30,8 @@ __all__ = [
     "LectureResponse",
     "TranscriptResponse",
     "TranscriptUpdate",
+    "NoteResponse",
+    "FlashcardResponse",
+    "QuizResponse",
+    "GlossaryResponse",
 ]

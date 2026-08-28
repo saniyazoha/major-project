@@ -21,9 +21,10 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_STORAGE_BUCKET: str = "lectures"
 
-    # Groq ASR Settings
+    # Groq ASR & LLM Settings
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "whisper-large-v3"
+    GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"
 
     # Local Storage Settings (Fallback / Dev)
     UPLOAD_DIR: str = os.path.join(BASE_DIR, "uploads")
