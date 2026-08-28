@@ -206,6 +206,41 @@ def trigger_generation(
     return {"lecture_id": lecture_id, "message": "Generation task initiated successfully"}
 
 
+@router.post("/{lecture_id}/broadcast", response_model=LectureResponse, status_code=status.HTTP_200_OK)
+def broadcast_lecture(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_faculty: dict = Depends(require_faculty),
+):
+    """Faculty endpoint to transition a lecture from draft to broadcast state."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_faculty["user_id"],
+        role="faculty",
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    if lecture.status != "draft":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Lecture in status '{lecture.status}' cannot be broadcast. Only lectures in status 'draft' can be broadcast.",
+        )
+
+    lecture.status = "broadcast"
+    db.commit()
+    db.refresh(lecture)
+
+    return lecture
+
+
 @router.get("/{lecture_id}/transcript", response_model=TranscriptResponse, status_code=status.HTTP_200_OK)
 def get_transcript(
     lecture_id: int,
