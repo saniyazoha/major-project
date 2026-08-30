@@ -6,7 +6,12 @@ from app.db.session import get_db
 from app.api.dependencies import get_current_user, require_faculty
 from app.schemas.lecture import LectureResponse
 from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
+from app.schemas.generation import NoteResponse, FlashcardResponse, QuizResponse, GlossaryResponse
 from app.models.transcript import Transcript
+from app.models.note import Note
+from app.models.flashcard import Flashcard
+from app.models.quiz import Quiz
+from app.models.glossary import Glossary
 from app.services import lecture_service, storage_service, transcript_processing_service, generation_service
 
 router = APIRouter(prefix="/lectures", tags=["lectures"])
@@ -318,3 +323,112 @@ def update_transcript_correction(
         )
 
     return transcript
+
+
+@router.get("/{lecture_id}/notes", response_model=NoteResponse, status_code=status.HTTP_200_OK)
+def get_lecture_notes(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve the generated Note for a lecture if user is authorized."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    note = db.query(Note).filter(Note.lecture_id == lecture_id).first()
+    if not note:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Note content not found for this lecture"
+        )
+
+    return note
+
+
+@router.get("/{lecture_id}/flashcards", response_model=List[FlashcardResponse], status_code=status.HTTP_200_OK)
+def get_lecture_flashcards(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve the list of generated Flashcards for a lecture if user is authorized."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    flashcards = db.query(Flashcard).filter(Flashcard.lecture_id == lecture_id).all()
+    return flashcards
+
+
+@router.get("/{lecture_id}/quizzes", response_model=List[QuizResponse], status_code=status.HTTP_200_OK)
+def get_lecture_quizzes(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve the list of generated Quizzes for a lecture if user is authorized."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    quizzes = db.query(Quiz).filter(Quiz.lecture_id == lecture_id).all()
+    return quizzes
+
+
+@router.get("/{lecture_id}/glossary", response_model=List[GlossaryResponse], status_code=status.HTTP_200_OK)
+def get_lecture_glossary(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve the list of generated Glossary items for a lecture if user is authorized."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    glossary_items = db.query(Glossary).filter(Glossary.lecture_id == lecture_id).all()
+    return glossary_items
