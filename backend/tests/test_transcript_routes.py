@@ -546,3 +546,78 @@ def test_sequential_corrections_overwrites_previous(transcript_route_setup):
     assert res2.json()["segment_timestamps_json"] == sample_timestamps
     assert res2.json()["status"] == "completed"
     assert lec1.status == "uploaded"
+
+
+def test_transcript_patch_rejected_409_when_lecture_status_is_draft_or_broadcast(transcript_route_setup):
+    """Verify PATCH /lectures/{id}/transcript returns 409 Conflict and leaves existing text unchanged when lecture status is 'draft' or 'broadcast'."""
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw uncorrected ASR text.",
+        corrected_text="Initial valid correction.",
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    # 1. Lecture status == 'draft'
+    lec1.status = "draft"
+    session.commit()
+
+    payload = {"corrected_text": "Attempted update while in draft status."}
+    res1 = client.patch(f"/lectures/{lec1.id}/transcript", json=payload, headers=headers)
+    assert res1.status_code == 409
+    assert "Transcript correction not allowed for lecture in status 'draft'" in res1.json()["detail"]
+
+    session.refresh(t)
+    assert t.corrected_text == "Initial valid correction."
+
+    # 2. Lecture status == 'broadcast'
+    lec1.status = "broadcast"
+    session.commit()
+
+    res2 = client.patch(f"/lectures/{lec1.id}/transcript", json=payload, headers=headers)
+    assert res2.status_code == 409
+    assert "Transcript correction not allowed for lecture in status 'broadcast'" in res2.json()["detail"]
+
+    session.refresh(t)
+    assert t.corrected_text == "Initial valid correction."
+
+
+def test_transcript_patch_allowed_when_lecture_status_is_uploaded_or_generation_failed(transcript_route_setup):
+    """Verify PATCH /lectures/{id}/transcript allows valid corrections when lecture status is 'uploaded' or 'generation_failed'."""
+    client = transcript_route_setup["client"]
+    session = transcript_route_setup["session"]
+    lec1 = transcript_route_setup["lec1"]
+    headers = transcript_route_setup["fac1_headers"]
+
+    t = Transcript(
+        lecture_id=lec1.id,
+        raw_text="Raw uncorrected ASR text.",
+        corrected_text=None,
+        status="completed"
+    )
+    session.add(t)
+    session.commit()
+
+    # 1. Status == 'uploaded'
+    lec1.status = "uploaded"
+    session.commit()
+
+    payload1 = {"corrected_text": "Correction under uploaded status."}
+    res1 = client.patch(f"/lectures/{lec1.id}/transcript", json=payload1, headers=headers)
+    assert res1.status_code == 200
+    assert res1.json()["corrected_text"] == "Correction under uploaded status."
+
+    # 2. Status == 'generation_failed'
+    lec1.status = "generation_failed"
+    session.commit()
+
+    payload2 = {"corrected_text": "Correction under generation_failed status."}
+    res2 = client.patch(f"/lectures/{lec1.id}/transcript", json=payload2, headers=headers)
+    assert res2.status_code == 200
+    assert res2.json()["corrected_text"] == "Correction under generation_failed status."
