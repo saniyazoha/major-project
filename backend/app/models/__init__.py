@@ -10,6 +10,7 @@ from app.models.note import Note
 from app.models.flashcard import Flashcard
 from app.models.quiz import Quiz
 from app.models.glossary import Glossary
+from app.models.lecture_analytics import LectureAnalytics
 
 __all__ = [
     "Base",
@@ -24,4 +25,5 @@ __all__ = [
     "Flashcard",
     "Quiz",
     "Glossary",
+    "LectureAnalytics",
 ]

@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
-from app.models import Base, Faculty, Student, Subject, Batch, Enrollment, Lecture, Transcript, Note, Flashcard, Quiz, Glossary
+from app.models import Base, Faculty, Student, Subject, Batch, Enrollment, Lecture, Transcript, Note, Flashcard, Quiz, Glossary, LectureAnalytics
 
 
 @pytest.fixture
@@ -14,12 +14,12 @@ def test_engine():
 
 
 def test_tables_created(test_engine):
-    """Verify all Phase 1, Phase 2, and Phase 3A tables exist."""
+    """Verify all Phase 1, Phase 2, Phase 3A, and Phase 4 tables exist."""
     inspector = inspect(test_engine)
     table_names = inspector.get_table_names()
     expected_tables = {
         "faculty", "students", "subjects", "batches", "enrollments",
-        "lectures", "transcripts", "notes", "flashcards", "quizzes", "glossary"
+        "lectures", "transcripts", "notes", "flashcards", "quizzes", "glossary", "lecture_analytics"
     }
     assert expected_tables.issubset(set(table_names))
 
@@ -55,8 +55,8 @@ def test_foreign_key_relationships(test_engine):
     assert has_student_fk
     assert has_batch_fk
 
-    # Phase 3A tables FKs -> lectures.id
-    for t_name in ["notes", "flashcards", "quizzes", "glossary"]:
+    # Phase 3A & Phase 4 tables FKs -> lectures.id
+    for t_name in ["notes", "flashcards", "quizzes", "glossary", "lecture_analytics"]:
         fks = inspector.get_foreign_keys(t_name)
         assert any(
             fk["referred_table"] == "lectures" and "lecture_id" in fk["constrained_columns"]
@@ -95,8 +95,8 @@ def test_unique_constraints_and_orm_insert(test_engine):
     db.close()
 
 
-def test_generation_models_creation_and_cascade_delete(test_engine):
-    """Verify Phase 3A generation models creation, relationships, unique note constraint, and cascade deletion."""
+def test_generation_and_analytics_models_creation_and_cascade_delete(test_engine):
+    """Verify generation & analytics models creation, relationships, 1:1 unique constraint, and cascade deletion."""
     TestingSession = sessionmaker(bind=test_engine)
     db = TestingSession()
 
@@ -132,19 +132,35 @@ def test_generation_models_creation_and_cascade_delete(test_engine):
     card2 = Flashcard(lecture_id=lec.id, question="What is MergeSort?", answer="A stable comparison-based sort.")
     quiz = Quiz(lecture_id=lec.id, question="Time complexity of QuickSort average case?", options_json='["O(N log N)", "O(N^2)"]', correct_answer="O(N log N)", explanation="Average pivot splits array evenly.")
     item = Glossary(lecture_id=lec.id, term="Pivot", definition="Element used to partition array in QuickSort.")
+    analytics = LectureAnalytics(
+        lecture_id=lec.id,
+        avg_wpm=120.5,
+        wpm_by_segment_json='[]',
+        word_frequency_json='{}',
+        filler_word_counts_json='{}',
+        keyword_frequency_json='{}',
+    )
 
-    db.add_all([note, card1, card2, quiz, item])
+    db.add_all([note, card1, card2, quiz, item, analytics])
     db.commit()
 
     assert lec.note.markdown_content == "# Sorting Notes"
     assert len(lec.flashcards) == 2
     assert len(lec.quizzes) == 1
     assert len(lec.glossary_items) == 1
+    assert lec.analytics.avg_wpm == 120.5
     assert item.lecture.title == "Sorting Algorithms"
 
-    # Verify unique constraint on notes.lecture_id
-    duplicate_note = Note(lecture_id=lec.id, markdown_content="Duplicate", summary_text="Duplicate")
-    db.add(duplicate_note)
+    # Verify unique constraint on lecture_analytics.lecture_id
+    duplicate_analytics = LectureAnalytics(
+        lecture_id=lec.id,
+        avg_wpm=100.0,
+        wpm_by_segment_json='[]',
+        word_frequency_json='{}',
+        filler_word_counts_json='{}',
+        keyword_frequency_json='{}',
+    )
+    db.add(duplicate_analytics)
     with pytest.raises(IntegrityError):
         db.commit()
     db.rollback()
@@ -157,5 +173,6 @@ def test_generation_models_creation_and_cascade_delete(test_engine):
     assert db.query(Flashcard).filter(Flashcard.lecture_id == lec.id).count() == 0
     assert db.query(Quiz).filter(Quiz.lecture_id == lec.id).count() == 0
     assert db.query(Glossary).filter(Glossary.lecture_id == lec.id).count() == 0
+    assert db.query(LectureAnalytics).filter(LectureAnalytics.lecture_id == lec.id).first() is None
 
     db.close()

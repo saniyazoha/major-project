@@ -7,12 +7,15 @@ from app.api.dependencies import get_current_user, require_faculty
 from app.schemas.lecture import LectureResponse
 from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
 from app.schemas.generation import NoteResponse, FlashcardResponse, QuizResponse, GlossaryResponse
+from app.schemas.analytics import LectureAnalyticsResponse
+from app.models.lecture import Lecture
 from app.models.transcript import Transcript
 from app.models.note import Note
 from app.models.flashcard import Flashcard
 from app.models.quiz import Quiz
 from app.models.glossary import Glossary
-from app.services import lecture_service, storage_service, transcript_processing_service, generation_service
+from app.models.lecture_analytics import LectureAnalytics
+from app.services import lecture_service, storage_service, transcript_processing_service, generation_service, analytics_service
 
 router = APIRouter(prefix="/lectures", tags=["lectures"])
 
@@ -432,3 +435,57 @@ def get_lecture_glossary(
 
     glossary_items = db.query(Glossary).filter(Glossary.lecture_id == lecture_id).all()
     return glossary_items
+
+
+@router.post("/{lecture_id}/analytics", response_model=LectureAnalyticsResponse, status_code=status.HTTP_200_OK)
+def create_or_update_lecture_analytics(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_faculty: dict = Depends(require_faculty),
+):
+    """Faculty endpoint to trigger/re-trigger analytics computation for an owned lecture."""
+    lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
+    if not lecture:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+
+    if lecture.faculty_id != current_faculty["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    try:
+        analytics = analytics_service.compute_and_save_lecture_analytics(db, lecture_id=lecture_id)
+    except analytics_service.TranscriptNotCompletedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(e)
+        )
+
+    return analytics
+
+
+@router.get("/{lecture_id}/analytics", response_model=LectureAnalyticsResponse, status_code=status.HTTP_200_OK)
+def get_lecture_analytics(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_faculty: dict = Depends(require_faculty),
+):
+    """Faculty endpoint to read persisted analytics for an owned lecture."""
+    lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
+    if not lecture:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+
+    if lecture.faculty_id != current_faculty["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    analytics = db.query(LectureAnalytics).filter(LectureAnalytics.lecture_id == lecture_id).first()
+    if not analytics:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analytics not found for this lecture"
+        )
+    return analytics

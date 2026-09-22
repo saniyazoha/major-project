@@ -16,6 +16,7 @@ from app.schemas.generation import (
     QuizResponse,
     GlossaryResponse,
 )
+from app.schemas.analytics import LectureAnalyticsResponse
 
 __all__ = [
     "LoginRequest",
@@ -34,4 +35,5 @@ __all__ = [
     "FlashcardResponse",
     "QuizResponse",
     "GlossaryResponse",
+    "LectureAnalyticsResponse",
 ]
