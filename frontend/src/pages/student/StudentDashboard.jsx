@@ -1,13 +1,15 @@
 import { CalendarDays, Clock, LogOut } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "../../context/AuthContext";
 
 import { lectures } from "../../data/lectures";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuthContext();
 
-  const username = localStorage.getItem("username") || "Kee";
+  const username = user?.name || user?.username || localStorage.getItem("username") || "Kee";
   const firstName = username.trim().split(" ")[0] || "Kee";
 
   const broadcastLectures = useMemo(() => {
@@ -36,10 +38,7 @@ export default function StudentDashboard() {
   );
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("role");
-    localStorage.removeItem("username");
-
+    logout();
     navigate("/login", { replace: true });
   };
 

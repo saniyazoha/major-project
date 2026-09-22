@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { GraduationCap, UserRound, LogIn } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuthContext } from "../../context/AuthContext";
 
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuthContext();
 
   const [role, setRole] = useState("student");
   const [username, setUsername] = useState("");
@@ -12,7 +14,7 @@ function Login() {
   const [error, setError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
 
     setError("");
@@ -35,24 +37,17 @@ function Login() {
 
     setIsLoggingIn(true);
 
-    /*
-     * Demo authentication
-     *
-     * Replace this section later with your backend/API authentication.
-     */
+    try {
+      const result = await login(trimmedUsername, password, role);
 
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("role", role);
-    localStorage.setItem("username", trimmedUsername);
+      if (!result.success) {
+        setError(result.message || "Invalid credentials.");
+        setIsLoggingIn(false);
+        return;
+      }
 
-    // Small delay so the button shows the login state.
-    setTimeout(() => {
       setIsLoggingIn(false);
 
-      /*
-       * If the user originally tried to access a protected page,
-       * send them back there when possible.
-       */
       const from = location.state?.from?.pathname;
 
       if (from && from !== "/login") {
@@ -65,7 +60,10 @@ function Login() {
       } else {
         navigate("/student/dashboard", { replace: true });
       }
-    }, 400);
+    } catch (err) {
+      setError(err?.message || "Login failed. Please try again.");
+      setIsLoggingIn(false);
+    }
   };
 
   return (

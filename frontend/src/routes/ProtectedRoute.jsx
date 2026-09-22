@@ -1,17 +1,37 @@
+import { useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { useAuthContext } from "../context/AuthContext";
+import { TOKEN_KEY } from "../api/client";
 
 function ProtectedRoute({ children, role }) {
   const location = useLocation();
+  const { user, isAuthenticated } = useAuthContext();
 
-  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+  const token = localStorage.getItem(TOKEN_KEY);
+  const storedRole = user?.role || localStorage.getItem("role");
 
-  const storedRole = localStorage.getItem("role");
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      const currentToken = localStorage.getItem(TOKEN_KEY);
+      if (!currentToken) {
+        window.location.replace("/login");
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("popstate", handlePageShow);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("popstate", handlePageShow);
+    };
+  }, []);
 
   // ==========================================
   // NOT LOGGED IN
   // ==========================================
 
-  if (!isAuthenticated || !storedRole) {
+  if (!token || !isAuthenticated || !user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

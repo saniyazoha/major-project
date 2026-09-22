@@ -15,9 +15,9 @@ def authenticate_faculty(db: Session, username: str, password: str) -> Faculty |
     return faculty
 
 
-def authenticate_student(db: Session, username: str, password: str) -> Student | None:
-    """Authenticate student against students table."""
-    student = db.query(Student).filter(Student.username == username).first()
+def authenticate_student(db: Session, roll_no: str, password: str) -> Student | None:
+    """Authenticate student against students table using roll number / USN."""
+    student = db.query(Student).filter(Student.rollno == roll_no).first()
     if not student:
         return None
     if not security.verify_password(password, student.password_hash):

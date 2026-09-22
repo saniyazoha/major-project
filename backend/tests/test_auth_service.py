@@ -51,17 +51,21 @@ def test_authenticate_faculty_non_existent_user(db_session):
 
 
 def test_authenticate_student_success(db_session):
-    stu = auth_service.authenticate_student(db_session, "ada", "AnalyticalEngine")
+    """Authenticate student using roll_no / USN."""
+    stu = auth_service.authenticate_student(db_session, "CS2026-01", "AnalyticalEngine")
     assert stu is not None
     assert stu.name == "Ada Lovelace"
+    assert stu.username == "ada"
     assert stu.rollno == "CS2026-01"
 
 
 def test_authenticate_student_invalid_password(db_session):
-    stu = auth_service.authenticate_student(db_session, "ada", "WrongPassword")
+    """Student authentication with wrong password fails."""
+    stu = auth_service.authenticate_student(db_session, "CS2026-01", "WrongPassword")
     assert stu is None
 
 
-def test_authenticate_student_non_existent_user(db_session):
-    stu = auth_service.authenticate_student(db_session, "nobody", "AnalyticalEngine")
+def test_authenticate_student_non_existent_usn(db_session):
+    """Student authentication with non-existent roll_no / USN fails."""
+    stu = auth_service.authenticate_student(db_session, "INVALID-USN-999", "AnalyticalEngine")
     assert stu is None

@@ -1,15 +1,13 @@
 import { Search, Bell, CircleHelp, LogOut } from "lucide-react";
-
 import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "../../context/AuthContext";
 
 function Header({ role }) {
   const navigate = useNavigate();
+  const { logout } = useAuthContext();
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("role");
-    localStorage.removeItem("username");
-
+    logout();
     navigate("/login", { replace: true });
   };
 

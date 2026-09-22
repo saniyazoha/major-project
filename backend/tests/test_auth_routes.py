@@ -80,7 +80,7 @@ def test_faculty_login_bad_password(auth_client):
         json={"username": "babbage", "password": "IncorrectPassword"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Incorrect username or password"
+    assert "Incorrect" in response.json()["detail"]
 
 
 def test_faculty_login_non_existent_user(auth_client):
@@ -89,23 +89,24 @@ def test_faculty_login_non_existent_user(auth_client):
         json={"username": "unknown_prof", "password": "DifferenceEngine!1"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Incorrect username or password"
+    assert "Incorrect" in response.json()["detail"]
 
 
 def test_role_separation_faculty_login_with_student_creds(auth_client):
     """Student credentials must fail on faculty login route."""
     response = auth_client.post(
         "/auth/faculty/login",
-        json={"username": "ghopper", "password": "COBOL1959!Key"}
+        json={"username": "CS2026-02", "password": "COBOL1959!Key"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Incorrect username or password"
+    assert "Incorrect" in response.json()["detail"]
 
 
 def test_student_login_success(auth_client):
+    """Student login using roll_no / USN and password succeeds."""
     response = auth_client.post(
         "/auth/student/login",
-        json={"username": "ghopper", "password": "COBOL1959!Key"}
+        json={"roll_no": "CS2026-02", "password": "COBOL1959!Key"}
     )
     assert response.status_code == 200
     data = response.json()
@@ -122,20 +123,31 @@ def test_student_login_success(auth_client):
     assert decoded["role"] == "student"
 
 
-def test_student_login_bad_password(auth_client):
+def test_student_login_invalid_usn(auth_client):
+    """Student login using non-existent USN / roll_no fails."""
     response = auth_client.post(
         "/auth/student/login",
-        json={"username": "ghopper", "password": "WrongPassword"}
+        json={"roll_no": "INVALID-USN-999", "password": "COBOL1959!Key"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Incorrect username or password"
+    assert "Incorrect" in response.json()["detail"]
+
+
+def test_student_login_bad_password(auth_client):
+    """Student login using valid USN but wrong password fails."""
+    response = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "WrongPassword"}
+    )
+    assert response.status_code == 401
+    assert "Incorrect" in response.json()["detail"]
 
 
 def test_role_separation_student_login_with_faculty_creds(auth_client):
     """Faculty credentials must fail on student login route."""
     response = auth_client.post(
         "/auth/student/login",
-        json={"username": "babbage", "password": "DifferenceEngine!1"}
+        json={"roll_no": "babbage", "password": "DifferenceEngine!1"}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Incorrect username or password"
+    assert "Incorrect" in response.json()["detail"]

@@ -29,6 +29,17 @@ class Settings(BaseSettings):
     # Local Storage Settings (Fallback / Dev)
     UPLOAD_DIR: str = os.path.join(BASE_DIR, "uploads")
 
+    # CORS Settings
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        if not self.CORS_ORIGINS:
+            return []
+        if isinstance(self.CORS_ORIGINS, list):
+            return [o.strip() for o in self.CORS_ORIGINS if o and o.strip()]
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o and o.strip()]
+
     model_config = SettingsConfigDict(
         env_file=ENV_PATH,
         env_file_encoding="utf-8",
