@@ -1,33 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 
-import { lectures, lectureData } from "../../data/lectures";
+import { apiClient } from "../../api/client";
 
 export default function StudentQuiz() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find(
-    (item) => String(item.id) === String(lectureId),
-  );
-
-  const selectedLectureData = lecture ? lectureData[lecture.dataId] : null;
-
-  const isPublished = lecture?.broadcastStatus === "Broadcast";
-
-  const quizQuestions =
-    selectedLectureData?.publishedQuiz || selectedLectureData?.quiz || [];
-
-  const editedBy =
-    selectedLectureData?.quizEditedBy ||
-    selectedLectureData?.editedBy ||
-    selectedLectureData?.lastEditedBy ||
-    selectedLectureData?.updatedBy ||
-    lecture?.quizEditedBy ||
-    lecture?.editedBy ||
-    lecture?.lastEditedBy ||
-    lecture?.updatedBy ||
-    "";
+  const [lectureTitle, setLectureTitle] = useState("");
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [errorStatus, setErrorStatus] = useState(null);
 
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -35,22 +20,72 @@ export default function StudentQuiz() {
   const [time, setTime] = useState(15 * 60);
   const [finished, setFinished] = useState(false);
 
-  const formatEditorName = (name) => {
-    if (!name) {
-      return "";
+  const parseOptions = (options_json) => {
+    if (!options_json) return [];
+    if (Array.isArray(options_json)) return options_json;
+    try {
+      const parsed = typeof options_json === "string" ? JSON.parse(options_json) : options_json;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
     }
+  };
 
-    const cleanedName = String(name)
-      .replace(/^Ms\.\s*/i, "")
-      .replace(/^Mrs\.\s*/i, "")
-      .replace(/^Dr\.\s*/i, "")
-      .trim();
+  const checkAnswer = (item, selectedIdx, optionsList) => {
+    if (selectedIdx === null || selectedIdx === undefined || !item) return false;
+    const selectedText = optionsList[selectedIdx];
+    const target = item.correct_answer;
+    if (target === undefined || target === null) return false;
 
-    return `Edited by Ms. ${cleanedName}`;
+    if (selectedText && String(selectedText).trim() === String(target).trim()) return true;
+    if (String(selectedIdx) === String(target).trim()) return true;
+    if (typeof target === "string" && target.length === 1) {
+      const code = target.toUpperCase().charCodeAt(0) - 65;
+      if (code === selectedIdx) return true;
+    }
+    return false;
+  };
+
+  const fetchQuizData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
+
+      const [lecData, quizData] = await Promise.all([
+        apiClient.get(`/lectures/${lectureId}`).catch(() => null),
+        apiClient.get(`/lectures/${lectureId}/quizzes`),
+      ]);
+
+      if (lecData?.title) {
+        setLectureTitle(lecData.title);
+      }
+
+      const list = Array.isArray(quizData) ? quizData : quizData?.data || [];
+      setQuizQuestions(list);
+      setCurrent(0);
+      setSelected(null);
+      setScore(0);
+      setFinished(false);
+      setTime(15 * 60);
+    } catch (err) {
+      console.error("Failed to load quiz data:", err);
+      setErrorStatus(err?.status || 500);
+      setError(err?.message || "Failed to load quiz.");
+      setQuizQuestions([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (finished || !lecture || !isPublished || quizQuestions.length === 0) {
+    if (lectureId) {
+      fetchQuizData();
+    }
+  }, [lectureId]);
+
+  useEffect(() => {
+    if (finished || loading || error || quizQuestions.length === 0) {
       return;
     }
 
@@ -67,7 +102,7 @@ export default function StudentQuiz() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [finished, lecture, isPublished, quizQuestions.length]);
+  }, [finished, loading, error, quizQuestions.length]);
 
   const formatTime = () => {
     const minutes = Math.floor(time / 60);
@@ -80,7 +115,10 @@ export default function StudentQuiz() {
   };
 
   const registerCurrentAnswer = () => {
-    if (selected !== null && selected === quizQuestions[current]?.answer) {
+    const currentQ = quizQuestions[current];
+    if (!currentQ) return;
+    const opts = parseOptions(currentQ.options_json);
+    if (checkAnswer(currentQ, selected, opts)) {
       setScore((previous) => previous + 1);
     }
   };
@@ -118,34 +156,58 @@ export default function StudentQuiz() {
     setFinished(true);
   };
 
-  if (!lecture) {
+  if (loading) {
     return (
       <div className="page student-page">
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
-          <h3>Lecture not found</h3>
-          <p>The requested lecture does not exist.</p>
+          <RefreshCw size={32} className="animate-spin" />
+          <p>Loading practice quiz...</p>
         </div>
       </div>
     );
   }
 
-  if (!isPublished) {
+  if (errorStatus === 403 || errorStatus === 404) {
     return (
       <div className="page student-page">
-        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
-          <h3>Lecture not available</h3>
-          <p>This lecture has not been published to students yet.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!selectedLectureData) {
-    return (
-      <div className="page student-page">
-        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate("/student/dashboard")}
+          style={{ marginBottom: 15 }}
+        >
+          <ArrowLeft size={15} /> Back to dashboard
+        </button>
+        <div className="card student-resource-empty">
           <h3>Quiz unavailable</h3>
-          <p>Published quiz content could not be found for this lecture.</p>
+          <p>The practice quiz for this lecture is unavailable or has not been broadcast.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page student-page">
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate("/student/dashboard")}
+          style={{ marginBottom: 15 }}
+        >
+          <ArrowLeft size={15} /> Back to dashboard
+        </button>
+        <div className="card student-resource-empty">
+          <h3>Failed to load quiz</h3>
+          <p>{error}</p>
+          <button
+            type="button"
+            className="secondary-action-button"
+            onClick={fetchQuizData}
+            style={{ marginTop: 12 }}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
         </div>
       </div>
     );
@@ -165,7 +227,7 @@ export default function StudentQuiz() {
             <button
               type="button"
               style={tabStyle}
-              onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
+              onClick={() => navigate(`/student/lectures/${lectureId}`)}
             >
               Notes
             </button>
@@ -174,7 +236,7 @@ export default function StudentQuiz() {
               type="button"
               style={tabStyle}
               onClick={() =>
-                navigate(`/student/lectures/${lecture.id}/flashcards`)
+                navigate(`/student/lectures/${lectureId}/flashcards`)
               }
             >
               Flashcards
@@ -188,7 +250,7 @@ export default function StudentQuiz() {
               type="button"
               style={tabStyle}
               onClick={() =>
-                navigate(`/student/lectures/${lecture.id}/transcript`)
+                navigate(`/student/lectures/${lectureId}/transcript`)
               }
             >
               Transcript
@@ -197,7 +259,7 @@ export default function StudentQuiz() {
             <button
               type="button"
               style={tabStyle}
-              onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+              onClick={() => navigate(`/student/lectures/${lectureId}/qa`)}
             >
               Ask
             </button>
@@ -205,8 +267,8 @@ export default function StudentQuiz() {
         </section>
 
         <div className="card student-resource-empty" style={{ marginTop: 18 }}>
-          <h3>Quiz unavailable</h3>
-          <p>No published quiz is currently available for this lecture.</p>
+          <h3>No quizzes generated for this lecture</h3>
+          <p>Practice quizzes will appear here once generated for this lecture.</p>
         </div>
       </div>
     );
@@ -226,7 +288,7 @@ export default function StudentQuiz() {
             <button
               type="button"
               style={tabStyle}
-              onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
+              onClick={() => navigate(`/student/lectures/${lectureId}`)}
             >
               Notes
             </button>
@@ -235,7 +297,7 @@ export default function StudentQuiz() {
               type="button"
               style={tabStyle}
               onClick={() =>
-                navigate(`/student/lectures/${lecture.id}/flashcards`)
+                navigate(`/student/lectures/${lectureId}/flashcards`)
               }
             >
               Flashcards
@@ -249,7 +311,7 @@ export default function StudentQuiz() {
               type="button"
               style={tabStyle}
               onClick={() =>
-                navigate(`/student/lectures/${lecture.id}/transcript`)
+                navigate(`/student/lectures/${lectureId}/transcript`)
               }
             >
               Transcript
@@ -258,7 +320,7 @@ export default function StudentQuiz() {
             <button
               type="button"
               style={tabStyle}
-              onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+              onClick={() => navigate(`/student/lectures/${lectureId}/qa`)}
             >
               Ask
             </button>
@@ -319,7 +381,7 @@ export default function StudentQuiz() {
           <button
             type="button"
             className="primary-action-button"
-            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
+            onClick={() => navigate(`/student/lectures/${lectureId}`)}
             style={{
               marginTop: 20,
             }}
@@ -332,7 +394,7 @@ export default function StudentQuiz() {
   }
 
   const question = quizQuestions[current];
-
+  const options = parseOptions(question?.options_json);
   const progress = ((current + 1) / quizQuestions.length) * 100;
 
   return (
@@ -350,7 +412,7 @@ export default function StudentQuiz() {
           <button
             type="button"
             style={tabStyle}
-            onClick={() => navigate(`/student/lectures/${lecture.id}/notes`)}
+            onClick={() => navigate(`/student/lectures/${lectureId}`)}
           >
             Notes
           </button>
@@ -359,7 +421,7 @@ export default function StudentQuiz() {
             type="button"
             style={tabStyle}
             onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/flashcards`)
+              navigate(`/student/lectures/${lectureId}/flashcards`)
             }
           >
             Flashcards
@@ -373,7 +435,7 @@ export default function StudentQuiz() {
             type="button"
             style={tabStyle}
             onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/transcript`)
+              navigate(`/student/lectures/${lectureId}/transcript`)
             }
           >
             Transcript
@@ -382,25 +444,22 @@ export default function StudentQuiz() {
           <button
             type="button"
             style={tabStyle}
-            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+            onClick={() =>
+              navigate(`/student/lectures/${lectureId}/glossary`)
+            }
+          >
+            Glossary
+          </button>
+
+          <button
+            type="button"
+            style={tabStyle}
+            onClick={() => navigate(`/student/lectures/${lectureId}/qa`)}
           >
             Ask
           </button>
         </div>
       </section>
-
-      {editedBy && (
-        <p
-          style={{
-            margin: "12px 0 0",
-            color: "#64748b",
-            fontSize: 11,
-            fontStyle: "italic",
-          }}
-        >
-          {formatEditorName(editedBy)}
-        </p>
-      )}
 
       {/* QUIZ HEADER */}
 
@@ -433,7 +492,7 @@ export default function StudentQuiz() {
               lineHeight: 1.3,
             }}
           >
-            {lecture.title}
+            {lectureTitle || "Lecture Quiz"}
           </h1>
         </div>
 
@@ -498,83 +557,85 @@ export default function StudentQuiz() {
 
       {/* QUESTION */}
 
-      <section
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: "26px 28px",
-          borderRadius: 15,
-        }}
-      >
-        <p
+      {question && (
+        <section
+          className="card"
           style={{
-            margin: 0,
-            color: "#52647d",
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
+            marginTop: 20,
+            padding: "26px 28px",
+            borderRadius: 15,
           }}
         >
-          Question {current + 1}
-        </p>
+          <p
+            style={{
+              margin: 0,
+              color: "#52647d",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Question {current + 1}
+          </p>
 
-        <h2
-          style={{
-            margin: "12px 0 0",
-            color: "#0f274f",
-            fontSize: 21,
-            lineHeight: 1.5,
-          }}
-        >
-          {question.question}
-        </h2>
+          <h2
+            style={{
+              margin: "12px 0 0",
+              color: "#0f274f",
+              fontSize: 21,
+              lineHeight: 1.5,
+            }}
+          >
+            {question.question}
+          </h2>
 
-        <div
-          style={{
-            display: "grid",
-            gap: 10,
-            marginTop: 22,
-          }}
-        >
-          {question.options.map((option, index) => (
-            <button
-              key={`${option}-${index}`}
-              type="button"
-              onClick={() => setSelected(index)}
-              style={{
-                width: "100%",
-                minHeight: 48,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "11px 14px",
-                border:
-                  selected === index
-                    ? "1px solid #84aee0"
-                    : "1px solid #dce1e8",
-                borderRadius: 9,
-                background: selected === index ? "#dce9fb" : "#ffffff",
-                color: "#475569",
-                fontSize: 14,
-                textAlign: "left",
-                cursor: "pointer",
-              }}
-            >
-              <span
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+              marginTop: 22,
+            }}
+          >
+            {options.map((option, index) => (
+              <button
+                key={`${option}-${index}`}
+                type="button"
+                onClick={() => setSelected(index)}
                 style={{
-                  fontSize: 17,
-                  color: "#173b6d",
+                  width: "100%",
+                  minHeight: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "11px 14px",
+                  border:
+                    selected === index
+                      ? "1px solid #84aee0"
+                      : "1px solid #dce1e8",
+                  borderRadius: 9,
+                  background: selected === index ? "#dce9fb" : "#ffffff",
+                  color: "#475569",
+                  fontSize: 14,
+                  textAlign: "left",
+                  cursor: "pointer",
                 }}
               >
-                {selected === index ? "●" : "○"}
-              </span>
+                <span
+                  style={{
+                    fontSize: 17,
+                    color: "#173b6d",
+                  }}
+                >
+                  {selected === index ? "●" : "○"}
+                </span>
 
-              {option}
-            </button>
-          ))}
-        </div>
-      </section>
+                {option}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CONTROLS */}
 

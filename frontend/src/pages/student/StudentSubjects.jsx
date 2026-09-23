@@ -1,67 +1,60 @@
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   BookOpen,
   CheckCircle,
+  RefreshCw,
   Search,
   TrendingUp,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { subjects } from "../../data/subjects";
-import { lectures } from "../../data/lectures";
+import { apiClient } from "../../api/client";
 
 export default function StudentSubjects() {
   const navigate = useNavigate();
 
+  const [subjects, setSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const subjectProgress = useMemo(() => {
-    return subjects
-      .map((subject) => {
-        const subjectLectures = lectures.filter(
-          (lecture) =>
-            String(lecture.subjectId) === String(subject.id) &&
-            lecture.broadcastStatus === "Broadcast",
-        );
+  const fetchSubjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiClient.get("/subjects");
+      setSubjects(Array.isArray(data) ? data : data?.data || []);
+    } catch (err) {
+      console.error("Failed to load student subjects:", err);
+      setError(
+        err.message ||
+          "Failed to load enrolled subjects. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (subjectLectures.length === 0) {
-          return null;
-        }
-
-        const completed = subjectLectures.filter(
-          (lecture) => lecture.status === "Processed",
-        ).length;
-
-        const total = subjectLectures.length;
-
-        const progress =
-          total === 0 ? 0 : Math.round((completed / total) * 100);
-
-        return {
-          ...subject,
-          completed,
-          total,
-          progress,
-        };
-      })
-      .filter(Boolean);
+  useEffect(() => {
+    fetchSubjects();
   }, []);
 
   const filteredSubjects = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
     if (!query) {
-      return subjectProgress;
+      return subjects;
     }
 
-    return subjectProgress.filter(
+    return subjects.filter(
       (subject) =>
         subject.name?.toLowerCase().includes(query) ||
         subject.code?.toLowerCase().includes(query),
     );
-  }, [searchTerm, subjectProgress]);
+  }, [searchTerm, subjects]);
 
   return (
     <div className="page student-page">
@@ -76,7 +69,7 @@ export default function StudentSubjects() {
           <h1>Your Subjects</h1>
 
           <p className="muted">
-            Browse your subjects and continue learning from available lectures.
+            Browse your enrolled subjects and view available lectures.
           </p>
         </div>
 
@@ -130,8 +123,8 @@ export default function StudentSubjects() {
           </div>
 
           <div>
-            <span>Subjects</span>
-            <strong>{subjectProgress.length}</strong>
+            <span>Enrolled Subjects</span>
+            <strong>{subjects.length}</strong>
           </div>
         </div>
 
@@ -142,12 +135,7 @@ export default function StudentSubjects() {
 
           <div>
             <span>Completed Lectures</span>
-            <strong>
-              {subjectProgress.reduce(
-                (total, subject) => total + subject.completed,
-                0,
-              )}
-            </strong>
+            <strong>0</strong>
           </div>
         </div>
 
@@ -158,18 +146,7 @@ export default function StudentSubjects() {
 
           <div>
             <span>Average Progress</span>
-
-            <strong>
-              {subjectProgress.length === 0
-                ? 0
-                : Math.round(
-                    subjectProgress.reduce(
-                      (total, subject) => total + subject.progress,
-                      0,
-                    ) / subjectProgress.length,
-                  )}
-              %
-            </strong>
+            <strong>0%</strong>
           </div>
         </div>
       </section>
@@ -191,7 +168,25 @@ export default function StudentSubjects() {
           </div>
         </div>
 
-        {filteredSubjects.length === 0 ? (
+        {loading ? (
+          <div className="card student-subject-empty">
+            <RefreshCw size={32} className="animate-spin" />
+            <p>Loading enrolled subjects...</p>
+          </div>
+        ) : error ? (
+          <div className="card student-subject-empty">
+            <AlertCircle size={38} />
+            <h3>Failed to load subjects</h3>
+            <p>{error}</p>
+            <button
+              type="button"
+              className="secondary-action-button"
+              onClick={fetchSubjects}
+            >
+              <RefreshCw size={15} /> Retry
+            </button>
+          </div>
+        ) : filteredSubjects.length === 0 ? (
           <div className="card student-subject-empty">
             <Search size={38} />
 
@@ -202,7 +197,7 @@ export default function StudentSubjects() {
             <p>
               {searchTerm
                 ? "Try a different subject name or code."
-                : "Your available subjects will appear here."}
+                : "You are not currently enrolled in any subjects."}
             </p>
 
             {searchTerm && (
@@ -238,7 +233,7 @@ export default function StudentSubjects() {
                   </div>
 
                   <span className="student-subject-percentage">
-                    {subject.progress}%
+                    Enrolled
                   </span>
                 </div>
 
@@ -250,30 +245,11 @@ export default function StudentSubjects() {
                   )}
                 </div>
 
-                <div className="student-subject-progress">
-                  <div className="student-subject-progress-label">
-                    <span>Learning Progress</span>
-
-                    <strong>{subject.progress}%</strong>
-                  </div>
-
-                  <div className="student-subject-progress-bar">
-                    <div
-                      className="student-subject-progress-fill"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.max(0, subject.progress),
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="student-subject-card-footer">
-                  <span>
-                    {subject.completed} of {subject.total} lectures completed
-                  </span>
+                <div
+                  className="student-subject-card-footer"
+                  style={{ marginTop: "auto", paddingTop: "1rem" }}
+                >
+                  <span>View Lectures</span>
 
                   <span className="student-subject-view">
                     View

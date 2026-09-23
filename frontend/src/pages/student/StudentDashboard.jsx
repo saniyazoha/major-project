@@ -1,57 +1,142 @@
-import { CalendarDays, Clock, LogOut } from "lucide-react";
-import { useMemo } from "react";
+import {
+  AlertCircle,
+  BookOpen,
+  CalendarDays,
+  Clock,
+  LogOut,
+  RefreshCw,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiClient } from "../../api/client";
 import { useAuthContext } from "../../context/AuthContext";
-
-import { lectures } from "../../data/lectures";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuthContext();
 
-  const username = user?.name || user?.username || localStorage.getItem("username") || "Kee";
-  const firstName = username.trim().split(" ")[0] || "Kee";
+  const [subjects, setSubjects] = useState([]);
+  const [lectures, setLectures] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const broadcastLectures = useMemo(() => {
-    return lectures.filter(
-      (lecture) => lecture.broadcastStatus === "Broadcast",
-    );
+  const username =
+    user?.name || user?.username || localStorage.getItem("username") || "Student";
+  const firstName = username.trim().split(" ")[0] || "Student";
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 1. Fetch enrolled subjects
+      const subjectsRes = await apiClient.get("/subjects");
+      const subjectsList = Array.isArray(subjectsRes)
+        ? subjectsRes
+        : subjectsRes?.data || [];
+      setSubjects(subjectsList);
+
+      if (subjectsList.length === 0) {
+        setLectures([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch enrolled batches & lectures for each subject
+      const allLectures = [];
+      const seenIds = new Set();
+
+      for (const subject of subjectsList) {
+        try {
+          const batchesRes = await apiClient.get(
+            `/subjects/${subject.id}/batches`,
+          );
+          const batchesList = Array.isArray(batchesRes)
+            ? batchesRes
+            : batchesRes?.data || [];
+
+          for (const batch of batchesList) {
+            try {
+              const lecturesRes = await apiClient.get(
+                `/lectures?batch_id=${batch.id}`,
+              );
+              const lecturesList = Array.isArray(lecturesRes)
+                ? lecturesRes
+                : lecturesRes?.data || [];
+
+              for (const lecture of lecturesList) {
+                if (!seenIds.has(lecture.id)) {
+                  seenIds.add(lecture.id);
+                  allLectures.push({
+                    ...lecture,
+                    subjectCode: subject.code || subject.name,
+                    subjectName: subject.name,
+                    batchName: batch.name || `Batch ${batch.id}`,
+                  });
+                }
+              }
+            } catch (err) {
+              console.error(
+                `Failed to load lectures for batch ${batch.id}:`,
+                err,
+              );
+            }
+          }
+        } catch (err) {
+          console.error(
+            `Failed to load batches for subject ${subject.id}:`,
+            err,
+          );
+        }
+      }
+
+      // Sort lectures by date descending (newest first)
+      allLectures.sort(
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
+      );
+
+      setLectures(allLectures);
+    } catch (err) {
+      console.error("Failed to load student dashboard data:", err);
+      setError(
+        err.message || "Failed to load dashboard data. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
-
-  const completedLectures = useMemo(() => {
-    return broadcastLectures.filter((lecture) => lecture.status === "Processed")
-      .length;
-  }, [broadcastLectures]);
-
-  const totalLectures = broadcastLectures.length;
-
-  const overallProgress =
-    totalLectures === 0
-      ? 0
-      : Math.round((completedLectures / totalLectures) * 100);
-
-  const averageQuizScore = 88;
-
-  const pendingReviews = Math.max(
-    0,
-    broadcastLectures.length - completedLectures,
-  );
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
 
-  const formatDuration = (duration) => {
-    if (!duration) return "45 mins";
-
-    if (duration.includes(":")) {
-      const [minutes] = duration.split(":");
-      return `${minutes} mins`;
+  const formatDate = (isoString) => {
+    if (!isoString) return "";
+    try {
+      return new Date(isoString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return isoString;
     }
-
-    return duration;
   };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes || isNaN(bytes)) return null;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const completedLectures = lectures.filter(
+    (l) => l.status === "Processed",
+  ).length;
+  const totalLectures = lectures.length;
 
   return (
     <div
@@ -158,7 +243,7 @@ export default function StudentDashboard() {
               textTransform: "uppercase",
             }}
           >
-            Overall Progress
+            Enrolled Subjects
           </p>
 
           <strong
@@ -171,7 +256,7 @@ export default function StudentDashboard() {
               fontWeight: 700,
             }}
           >
-            {overallProgress}%
+            {loading ? "..." : subjects.length}
           </strong>
         </div>
 
@@ -196,7 +281,7 @@ export default function StudentDashboard() {
               textTransform: "uppercase",
             }}
           >
-            Lectures Completed
+            Available Lectures
           </p>
 
           <strong
@@ -209,7 +294,45 @@ export default function StudentDashboard() {
               fontWeight: 700,
             }}
           >
-            {completedLectures}/{totalLectures}
+            {loading ? "..." : totalLectures}
+          </strong>
+        </div>
+
+        <div
+          className="card"
+          style={{
+            minHeight: 102,
+            padding: "20px 20px 18px",
+            borderRadius: 15,
+            background: "#ffffff",
+            border: "1px solid #e1e7ef",
+            boxShadow: "0 8px 22px rgba(15, 39, 79, 0.07)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "#566782",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
+            }}
+          >
+            Processed Lectures
+          </p>
+
+          <strong
+            style={{
+              display: "block",
+              marginTop: 9,
+              color: "#0f274f",
+              fontSize: 28,
+              lineHeight: 1,
+              fontWeight: 700,
+            }}
+          >
+            {loading ? "..." : `${completedLectures}/${totalLectures}`}
           </strong>
         </div>
 
@@ -241,51 +364,13 @@ export default function StudentDashboard() {
             style={{
               display: "block",
               marginTop: 9,
-              color: "#0f274f",
+              color: "#68778d",
               fontSize: 28,
               lineHeight: 1,
               fontWeight: 700,
             }}
           >
-            {averageQuizScore}%
-          </strong>
-        </div>
-
-        <div
-          className="card"
-          style={{
-            minHeight: 102,
-            padding: "20px 20px 18px",
-            borderRadius: 15,
-            background: "#ffffff",
-            border: "1px solid #e1e7ef",
-            boxShadow: "0 8px 22px rgba(15, 39, 79, 0.07)",
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              color: "#566782",
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.11em",
-              textTransform: "uppercase",
-            }}
-          >
-            Pending Reviews
-          </p>
-
-          <strong
-            style={{
-              display: "block",
-              marginTop: 9,
-              color: "#0f274f",
-              fontSize: 28,
-              lineHeight: 1,
-              fontWeight: 700,
-            }}
-          >
-            {pendingReviews}
+            N/A
           </strong>
         </div>
       </section>
@@ -310,7 +395,54 @@ export default function StudentDashboard() {
           Available lectures
         </h2>
 
-        {broadcastLectures.length === 0 ? (
+        {loading ? (
+          <div
+            className="card"
+            style={{
+              marginTop: 14,
+              padding: 32,
+              borderRadius: 15,
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <RefreshCw size={28} className="animate-spin" style={{ color: "#1f6feb" }} />
+            <p style={{ margin: 0, color: "#68778d", fontSize: 14 }}>
+              Loading your dashboard lectures...
+            </p>
+          </div>
+        ) : error ? (
+          <div
+            className="card"
+            style={{
+              marginTop: 14,
+              padding: 32,
+              borderRadius: 15,
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <AlertCircle size={32} style={{ color: "#e11d48" }} />
+            <h3 style={{ margin: 0, color: "#0f274f", fontSize: 16, fontWeight: 700 }}>
+              Failed to load dashboard
+            </h3>
+            <p style={{ margin: 0, color: "#68778d", fontSize: 14 }}>{error}</p>
+            <button
+              type="button"
+              className="secondary-action-button"
+              onClick={fetchDashboardData}
+              style={{ marginTop: 8 }}
+            >
+              <RefreshCw size={15} /> Retry
+            </button>
+          </div>
+        ) : subjects.length === 0 ? (
           <div
             className="card"
             style={{
@@ -320,6 +452,10 @@ export default function StudentDashboard() {
               textAlign: "center",
             }}
           >
+            <BookOpen size={32} style={{ margin: "0 auto 12px", color: "#68778d" }} />
+            <h3 style={{ margin: "0 0 6px", color: "#0f274f", fontSize: 16, fontWeight: 700 }}>
+              No subjects enrolled
+            </h3>
             <p
               style={{
                 margin: 0,
@@ -327,7 +463,31 @@ export default function StudentDashboard() {
                 fontSize: 14,
               }}
             >
-              No broadcast lectures are currently available.
+              You are not currently enrolled in any active subjects.
+            </p>
+          </div>
+        ) : lectures.length === 0 ? (
+          <div
+            className="card"
+            style={{
+              marginTop: 14,
+              padding: 32,
+              borderRadius: 15,
+              textAlign: "center",
+            }}
+          >
+            <BookOpen size={32} style={{ margin: "0 auto 12px", color: "#68778d" }} />
+            <h3 style={{ margin: "0 0 6px", color: "#0f274f", fontSize: 16, fontWeight: 700 }}>
+              No lectures available
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                color: "#68778d",
+                fontSize: 14,
+              }}
+            >
+              Broadcast lectures for your enrolled subjects will appear here when available.
             </p>
           </div>
         ) : (
@@ -338,7 +498,7 @@ export default function StudentDashboard() {
               marginTop: 14,
             }}
           >
-            {broadcastLectures.map((lecture) => (
+            {lectures.map((lecture) => (
               <div
                 key={lecture.id}
                 className="card"
@@ -395,65 +555,71 @@ export default function StudentDashboard() {
                         marginTop: 8,
                       }}
                     >
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          minHeight: 23,
-                          padding: "3px 9px",
-                          borderRadius: 999,
-                          background: "#eef2f7",
-                          color: "#64748b",
-                          fontSize: 11,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {lecture.subjectCode}
-                      </span>
+                      {lecture.subjectCode && (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            minHeight: 23,
+                            padding: "3px 9px",
+                            borderRadius: 999,
+                            background: "#eef2f7",
+                            color: "#64748b",
+                            fontSize: 11,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {lecture.subjectCode}
+                        </span>
+                      )}
 
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          minHeight: 23,
-                          padding: "3px 9px",
-                          borderRadius: 999,
-                          background: "#eef2f7",
-                          color: "#64748b",
-                          fontSize: 11,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {lecture.batch}
-                      </span>
+                      {lecture.batchName && (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            minHeight: 23,
+                            padding: "3px 9px",
+                            borderRadius: 999,
+                            background: "#eef2f7",
+                            color: "#64748b",
+                            fontSize: 11,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {lecture.batchName}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 7,
-                      flexShrink: 0,
-                      padding: "5px 10px",
-                      borderRadius: 999,
-                      background: "#e9f7ef",
-                      color: "#179253",
-                      fontSize: 11,
-                      fontWeight: 600,
-                    }}
-                  >
+                  {lecture.status && (
                     <span
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: "#27a568",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                        flexShrink: 0,
+                        padding: "5px 10px",
+                        borderRadius: 999,
+                        background: "#e9f7ef",
+                        color: "#179253",
+                        fontSize: 11,
+                        fontWeight: 600,
                       }}
-                    />
+                    >
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: "#27a568",
+                        }}
+                      />
 
-                    {lecture.broadcastStatus}
-                  </span>
+                      {lecture.status}
+                    </span>
+                  )}
                 </div>
 
                 <div
@@ -467,27 +633,31 @@ export default function StudentDashboard() {
                     fontSize: 12,
                   }}
                 >
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 7,
-                    }}
-                  >
-                    <CalendarDays size={14} />
-                    {lecture.date}
-                  </span>
+                  {lecture.created_at && (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                      }}
+                    >
+                      <CalendarDays size={14} />
+                      {formatDate(lecture.created_at)}
+                    </span>
+                  )}
 
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 7,
-                    }}
-                  >
-                    <Clock size={14} />
-                    {formatDuration(lecture.duration)}
-                  </span>
+                  {lecture.file_size && (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                      }}
+                    >
+                      <Clock size={14} />
+                      {formatFileSize(lecture.file_size)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

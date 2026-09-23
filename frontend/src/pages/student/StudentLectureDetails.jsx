@@ -1,82 +1,55 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, Download, FileText } from "lucide-react";
+import { ArrowLeft, Clock, Download, FileText, RefreshCw } from "lucide-react";
 import { jsPDF } from "jspdf";
 
-import { lectures, lectureData } from "../../data/lectures";
+import { apiClient } from "../../api/client";
 
 function StudentLectureDetails() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find(
-    (item) => String(item.id) === String(lectureId),
-  );
+  const [lecture, setLecture] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const selectedLectureData = lecture ? lectureData[lecture.dataId] : null;
-
-  const isPublished = lecture?.broadcastStatus === "Broadcast";
-
-  const transcript =
-    selectedLectureData?.publishedTranscript ||
-    selectedLectureData?.transcript ||
-    [];
-
-  const notes =
-    selectedLectureData?.publishedNotes ||
-    selectedLectureData?.notes ||
-    selectedLectureData?.summary ||
-    [];
-
-  const flashcards =
-    selectedLectureData?.publishedFlashcards ||
-    selectedLectureData?.flashcards ||
-    [];
-
-  const quiz =
-    selectedLectureData?.publishedQuiz || selectedLectureData?.quiz || [];
-
-  const editedBy =
-    selectedLectureData?.notesEditedBy ||
-    selectedLectureData?.flashcardsEditedBy ||
-    selectedLectureData?.transcriptEditedBy ||
-    selectedLectureData?.quizEditedBy ||
-    selectedLectureData?.editedBy ||
-    selectedLectureData?.lastEditedBy ||
-    selectedLectureData?.updatedBy ||
-    lecture?.notesEditedBy ||
-    lecture?.flashcardsEditedBy ||
-    lecture?.transcriptEditedBy ||
-    lecture?.quizEditedBy ||
-    lecture?.editedBy ||
-    lecture?.lastEditedBy ||
-    lecture?.updatedBy ||
-    "";
-
-  const formatEditorName = (name) => {
-    if (!name) {
-      return "";
+  const fetchLecture = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiClient.get(`/lectures/${lectureId}`);
+      setLecture(data);
+    } catch (err) {
+      console.error("Failed to load lecture:", err);
+      setError(err?.message || "Failed to load lecture.");
+      setLecture(null);
+    } finally {
+      setLoading(false);
     }
-
-    const cleanedName = String(name)
-      .replace(/^Ms\.\s*/i, "")
-      .replace(/^Mrs\.\s*/i, "")
-      .replace(/^Dr\.\s*/i, "")
-      .trim();
-
-    return `Edited by Ms. ${cleanedName}`;
   };
 
-  const formatDuration = (duration) => {
-    if (!duration) {
-      return "";
+  useEffect(() => {
+    if (lectureId) {
+      fetchLecture();
     }
+  }, [lectureId]);
 
-    if (String(duration).includes(":")) {
-      const [minutes] = String(duration).split(":");
-      return `${minutes} mins`;
+  const formatDate = (isoString) => {
+    if (!isoString) return "";
+    try {
+      return new Date(isoString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return isoString;
     }
+  };
 
-    return duration;
+  const formatFileSize = (bytes) => {
+    if (!bytes || isNaN(bytes)) return null;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   /* =========================================================
@@ -110,21 +83,15 @@ function StudentLectureDetails() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
 
-    doc.text(lecture.title, 20, 20);
+    doc.text(lecture?.title || "Lecture", 20, 20);
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
 
     doc.text(
-      `${lecture.subjectCode || ""} ${lecture.batch || ""}`.trim(),
-      20,
-      28,
-    );
-
-    doc.text(
-      `${lecture.date || ""} ${
-        lecture.duration ? `• ${formatDuration(lecture.duration)}` : ""
-      }`,
+      `${formatDate(lecture?.created_at)} ${
+        lecture?.file_size ? `• ${formatFileSize(lecture.file_size)}` : ""
+      }`.trim(),
       20,
       35,
     );
@@ -145,7 +112,7 @@ function StudentLectureDetails() {
   ========================================================= */
 
   const downloadMaterial = (type) => {
-    if (!lecture || !selectedLectureData) {
+    if (!lecture) {
       return;
     }
 
@@ -154,169 +121,25 @@ function StudentLectureDetails() {
 
     if (type === "transcript") {
       y = addPdfTitle(doc, "Transcript");
-
-      if (transcript.length === 0) {
-        addWrappedText(doc, "No published transcript is available.", 20, y);
-      } else {
-        transcript.forEach((item) => {
-          if (y > 270) {
-            doc.addPage();
-            y = 20;
-          }
-
-          doc.setFont("helvetica", "bold");
-          doc.text(String(item.time || ""), 20, y);
-
-          doc.setFont("helvetica", "normal");
-
-          y = addWrappedText(doc, item.text || "", 38, y, 150);
-
-          y += 5;
-        });
-      }
+      addWrappedText(doc, "No published transcript is available.", 20, y);
     }
 
     if (type === "notes") {
       y = addPdfTitle(doc, "Notes");
-
-      if (notes.length === 0) {
-        addWrappedText(doc, "No published notes are available.", 20, y);
-      } else {
-        notes.forEach((item, index) => {
-          y = addWrappedText(doc, `${index + 1}. ${item}`, 20, y);
-
-          y += 4;
-        });
-      }
-
-      if (selectedLectureData?.concepts?.length > 0) {
-        y += 5;
-
-        if (y > 265) {
-          doc.addPage();
-          y = 20;
-        }
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        doc.text("Key Concepts", 20, y);
-
-        y += 10;
-
-        doc.setFontSize(11);
-
-        selectedLectureData.concepts.forEach((concept) => {
-          if (y > 260) {
-            doc.addPage();
-            y = 20;
-          }
-
-          doc.setFont("helvetica", "bold");
-          y = addWrappedText(doc, concept.title || "", 20, y);
-
-          doc.setFont("helvetica", "normal");
-          y = addWrappedText(doc, concept.description || "", 20, y);
-
-          y += 5;
-        });
-      }
+      addWrappedText(doc, "No published notes are available.", 20, y);
     }
 
     if (type === "flashcards") {
       y = addPdfTitle(doc, "Flashcards");
-
-      if (flashcards.length === 0) {
-        addWrappedText(doc, "No published flashcards are available.", 20, y);
-      } else {
-        flashcards.forEach((item, index) => {
-          if (y > 250) {
-            doc.addPage();
-            y = 20;
-          }
-
-          doc.setFont("helvetica", "bold");
-
-          y = addWrappedText(
-            doc,
-            `${index + 1}. Question: ${item.question}`,
-            20,
-            y,
-          );
-
-          doc.setFont("helvetica", "normal");
-
-          y = addWrappedText(doc, `Answer: ${item.answer}`, 20, y);
-
-          y += 7;
-        });
-      }
+      addWrappedText(doc, "No published flashcards are available.", 20, y);
     }
 
     if (type === "quiz") {
       y = addPdfTitle(doc, "Practice Quiz");
-
-      if (quiz.length === 0) {
-        addWrappedText(doc, "No published quiz is available.", 20, y);
-      } else {
-        quiz.forEach((item, index) => {
-          if (y > 235) {
-            doc.addPage();
-            y = 20;
-          }
-
-          doc.setFont("helvetica", "bold");
-
-          y = addWrappedText(doc, `${index + 1}. ${item.question}`, 20, y);
-
-          doc.setFont("helvetica", "normal");
-
-          item.options?.forEach((option, optionIndex) => {
-            y = addWrappedText(
-              doc,
-              `${String.fromCharCode(65 + optionIndex)}. ${option}`,
-              28,
-              y,
-              160,
-            );
-          });
-
-          if (typeof item.answer === "number" && item.options?.[item.answer]) {
-            y += 2;
-
-            doc.setFont("helvetica", "bold");
-
-            y = addWrappedText(
-              doc,
-              `Answer: ${String.fromCharCode(
-                65 + item.answer,
-              )}. ${item.options[item.answer]}`,
-              28,
-              y,
-              160,
-            );
-
-            doc.setFont("helvetica", "normal");
-          }
-
-          y += 7;
-        });
-      }
-    }
-
-    if (editedBy) {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(9);
-
-      doc.text(formatEditorName(editedBy), 20, y + 8);
+      addWrappedText(doc, "No published quiz is available.", 20, y);
     }
 
     const fileName = sanitizeFileName(lecture.title);
-
     doc.save(`${fileName}-${type}.pdf`);
   };
 
@@ -325,174 +148,30 @@ function StudentLectureDetails() {
   ========================================================= */
 
   const downloadFullStudyPack = () => {
-    if (!lecture || !selectedLectureData) {
+    if (!lecture) {
       return;
     }
 
     const doc = new jsPDF();
-
     let y = addPdfTitle(doc, "Full Study Pack");
 
-    /* =========================
-       TRANSCRIPT
-    ========================= */
-
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-
-    doc.text("Transcript", 20, y);
-
+    doc.text("Study Pack", 20, y);
     y += 10;
-
     doc.setFontSize(11);
-
-    transcript.forEach((item) => {
-      if (y > 260) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.text(String(item.time || ""), 20, y);
-
-      doc.setFont("helvetica", "normal");
-
-      y = addWrappedText(doc, item.text || "", 38, y, 150);
-
-      y += 4;
-    });
-
-    /* =========================
-       NOTES
-    ========================= */
-
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
-
-    y += 8;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-
-    doc.text("Notes", 20, y);
-
-    y += 10;
-
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-
-    notes.forEach((item, index) => {
-      y = addWrappedText(doc, `${index + 1}. ${item}`, 20, y);
-
-      y += 3;
-    });
-
-    /* =========================
-       FLASHCARDS
-    ========================= */
-
-    if (y > 245) {
-      doc.addPage();
-      y = 20;
-    }
-
-    y += 8;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-
-    doc.text("Flashcards", 20, y);
-
-    y += 10;
-
-    doc.setFontSize(11);
-
-    flashcards.forEach((item, index) => {
-      if (y > 245) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFont("helvetica", "bold");
-
-      y = addWrappedText(doc, `${index + 1}. ${item.question}`, 20, y);
-
-      doc.setFont("helvetica", "normal");
-
-      y = addWrappedText(doc, `Answer: ${item.answer}`, 20, y);
-
-      y += 5;
-    });
-
-    /* =========================
-       QUIZ
-    ========================= */
-
-    if (y > 235) {
-      doc.addPage();
-      y = 20;
-    }
-
-    y += 8;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-
-    doc.text("Practice Quiz", 20, y);
-
-    y += 10;
-
-    doc.setFontSize(11);
-
-    quiz.forEach((item, index) => {
-      if (y > 225) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFont("helvetica", "bold");
-
-      y = addWrappedText(doc, `${index + 1}. ${item.question}`, 20, y);
-
-      doc.setFont("helvetica", "normal");
-
-      item.options?.forEach((option, optionIndex) => {
-        y = addWrappedText(
-          doc,
-          `${String.fromCharCode(65 + optionIndex)}. ${option}`,
-          28,
-          y,
-          160,
-        );
-      });
-
-      y += 5;
-    });
-
-    if (editedBy) {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(9);
-
-      doc.text(formatEditorName(editedBy), 20, y + 8);
-    }
+    addWrappedText(doc, "Published learning material will be available here.", 20, y);
 
     const fileName = sanitizeFileName(lecture.title);
-
     doc.save(`${fileName}-full-study-pack.pdf`);
   };
 
   /* =========================================================
-     VALIDATION
+     VALIDATION & LOADING STATES
   ========================================================= */
 
-  if (!lecture) {
+  if (loading) {
     return (
       <div className="page student-page">
         <button
@@ -505,14 +184,14 @@ function StudentLectureDetails() {
         </button>
 
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
-          <h3>Lecture not found</h3>
-          <p>The requested lecture does not exist.</p>
+          <RefreshCw size={32} className="animate-spin" />
+          <p>Loading lecture details...</p>
         </div>
       </div>
     );
   }
 
-  if (!isPublished) {
+  if (error || !lecture) {
     return (
       <div className="page student-page">
         <button
@@ -526,29 +205,7 @@ function StudentLectureDetails() {
 
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
           <h3>Lecture not available</h3>
-          <p>This lecture has not been published to students yet.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!selectedLectureData) {
-    return (
-      <div className="page student-page">
-        <button
-          type="button"
-          className="back-button"
-          onClick={() => navigate("/student/dashboard")}
-        >
-          <ArrowLeft size={15} />
-          Back to dashboard
-        </button>
-
-        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
-          <h3>Lecture material unavailable</h3>
-          <p>
-            Published learning material could not be found for this lecture.
-          </p>
+          <p>The requested lecture does not exist or has not been broadcast to your batch.</p>
         </div>
       </div>
     );
@@ -602,35 +259,30 @@ function StudentLectureDetails() {
             marginTop: 10,
           }}
         >
-          <span style={metaChipStyle}>{lecture.subjectCode}</span>
+          {lecture.created_at && (
+            <span style={metaChipStyle}>{formatDate(lecture.created_at)}</span>
+          )}
 
-          <span style={metaChipStyle}>{lecture.batch}</span>
+          {lecture.file_size && (
+            <span
+              style={{
+                ...metaChipStyle,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <Clock size={12} />
+              {formatFileSize(lecture.file_size)}
+            </span>
+          )}
 
-          <span
-            style={{
-              ...metaChipStyle,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <Clock size={12} />
-            {formatDuration(lecture.duration)}
-          </span>
+          {lecture.status && (
+            <span style={{ ...metaChipStyle, textTransform: "capitalize" }}>
+              {lecture.status}
+            </span>
+          )}
         </div>
-
-        {editedBy && (
-          <p
-            style={{
-              margin: "10px 0 0",
-              color: "#64748b",
-              fontSize: 12,
-              fontWeight: 500,
-            }}
-          >
-            {formatEditorName(editedBy)}
-          </p>
-        )}
       </section>
 
       <section
@@ -750,6 +402,16 @@ function StudentLectureDetails() {
 
           <button
             type="button"
+            onClick={() =>
+              navigate(`/student/lectures/${lecture.id}/glossary`)
+            }
+            style={tabButtonStyle}
+          >
+            Glossary
+          </button>
+
+          <button
+            type="button"
             onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
             style={tabButtonStyle}
           >
@@ -786,48 +448,8 @@ function StudentLectureDetails() {
               lineHeight: 1.8,
             }}
           >
-            {notes?.[0] ||
-              `Review the published learning material for ${lecture.title}.`}
+            Review the published learning material for {lecture.title}.
           </p>
-
-          {selectedLectureData.concepts?.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-                marginTop: 15,
-              }}
-            >
-              {selectedLectureData.concepts.map((concept) => (
-                <span
-                  key={concept.title}
-                  style={{
-                    padding: "5px 10px",
-                    borderRadius: 999,
-                    background: "#eef2f7",
-                    color: "#627188",
-                    fontSize: 11,
-                  }}
-                >
-                  {concept.title}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {editedBy && (
-            <p
-              style={{
-                margin: "18px 0 0",
-                color: "#64748b",
-                fontSize: 11,
-                fontStyle: "italic",
-              }}
-            >
-              {formatEditorName(editedBy)}
-            </p>
-          )}
         </div>
       </section>
     </div>

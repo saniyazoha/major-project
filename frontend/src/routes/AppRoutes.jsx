@@ -152,6 +152,15 @@ function AppRoutes() {
         <Route path="lectures/:lectureId/notes" element={<StudentNotes />} />
 
         {/* =========================
+            STUDENT GLOSSARY
+        ========================= */}
+
+        <Route
+          path="lectures/:lectureId/glossary"
+          element={<StudentNotes initialTab="glossary" />}
+        />
+
+        {/* =========================
             STUDENT TRANSCRIPT
         ========================= */}
 

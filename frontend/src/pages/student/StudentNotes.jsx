@@ -1,93 +1,119 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 
-import { lectures, lectureData } from "../../data/lectures";
+import { apiClient } from "../../api/client";
 
-export default function StudentNotes() {
+export default function StudentNotes({ initialTab = "notes" }) {
   const { lectureId } = useParams();
   const navigate = useNavigate();
 
-  const lecture = lectures.find(
-    (item) => String(item.id) === String(lectureId),
-  );
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [note, setNote] = useState(null);
+  const [glossaryItems, setGlossaryItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [errorStatus, setErrorStatus] = useState(null);
 
-  const selectedLectureData = lecture ? lectureData[lecture.dataId] : null;
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
-  const isPublished = lecture?.broadcastStatus === "Broadcast";
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
 
-  const notes =
-    selectedLectureData?.publishedNotes ||
-    selectedLectureData?.notes ||
-    selectedLectureData?.summary ||
-    [];
+      const [noteData, glossaryData] = await Promise.all([
+        apiClient.get(`/lectures/${lectureId}/notes`).catch((err) => {
+          if (err?.status === 404) return null;
+          throw err;
+        }),
+        apiClient.get(`/lectures/${lectureId}/glossary`).catch((err) => {
+          if (err?.status === 404) return [];
+          throw err;
+        }),
+      ]);
 
-  const noteSections =
-    selectedLectureData?.publishedNoteSections ||
-    selectedLectureData?.noteSections ||
-    selectedLectureData?.concepts ||
-    [];
-
-  const glossary =
-    selectedLectureData?.publishedGlossary ||
-    selectedLectureData?.glossary ||
-    [];
-
-  const editedBy =
-    selectedLectureData?.notesEditedBy ||
-    selectedLectureData?.editedBy ||
-    selectedLectureData?.lastEditedBy ||
-    selectedLectureData?.updatedBy ||
-    lecture?.notesEditedBy ||
-    lecture?.editedBy ||
-    lecture?.lastEditedBy ||
-    lecture?.updatedBy ||
-    "";
-
-  const formatEditorName = (name) => {
-    if (!name) {
-      return "";
+      setNote(noteData);
+      setGlossaryItems(Array.isArray(glossaryData) ? glossaryData : glossaryData?.data || []);
+    } catch (err) {
+      console.error("Failed to load student notes/glossary:", err);
+      setErrorStatus(err?.status || 500);
+      setError(err?.message || "Failed to load notes and glossary.");
+      setNote(null);
+      setGlossaryItems([]);
+    } finally {
+      setLoading(false);
     }
-
-    const cleanedName = String(name)
-      .replace(/^Ms\.\s*/i, "")
-      .replace(/^Mrs\.\s*/i, "")
-      .replace(/^Dr\.\s*/i, "")
-      .trim();
-
-    return `Edited by Ms. ${cleanedName}`;
   };
 
-  if (!lecture) {
+  useEffect(() => {
+    if (lectureId) {
+      fetchData();
+    }
+  }, [lectureId]);
+
+  if (loading) {
     return (
       <div className="page student-page">
         <div className="card student-resource-empty" style={{ marginTop: 20 }}>
-          <h3>Lecture not found</h3>
-          <p>The requested lecture does not exist.</p>
+          <RefreshCw size={32} className="animate-spin" />
+          <p>Loading {activeTab === "glossary" ? "glossary" : "notes"}...</p>
         </div>
       </div>
     );
   }
 
-  if (!isPublished) {
+  if (errorStatus === 403 || errorStatus === 404) {
     return (
       <div className="page student-page">
-        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
-          <h3>Lecture not available</h3>
-          <p>This lecture has not been published to students yet.</p>
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate("/student/dashboard")}
+          style={{ marginBottom: 15 }}
+        >
+          <ArrowLeft size={15} /> Back to dashboard
+        </button>
+        <div className="card student-resource-empty">
+          <h3>Content unavailable</h3>
+          <p>The requested content for this lecture is unavailable or has not been broadcast.</p>
         </div>
       </div>
     );
   }
 
-  if (!selectedLectureData) {
+  if (error) {
     return (
       <div className="page student-page">
-        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
-          <h3>Notes unavailable</h3>
-          <p>Published notes could not be found for this lecture.</p>
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate("/student/dashboard")}
+          style={{ marginBottom: 15 }}
+        >
+          <ArrowLeft size={15} /> Back to dashboard
+        </button>
+        <div className="card student-resource-empty">
+          <h3>Failed to load content</h3>
+          <p>{error}</p>
+          <button
+            type="button"
+            className="secondary-action-button"
+            onClick={fetchData}
+            style={{ marginTop: 12 }}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
         </div>
       </div>
     );
   }
+
+  const hasNotes = note && (note.markdown_content || note.summary_text);
+  const hasGlossary = glossaryItems.length > 0;
 
   return (
     <div
@@ -99,7 +125,11 @@ export default function StudentNotes() {
     >
       <section>
         <div style={tabContainerStyle}>
-          <button type="button" style={activeTabStyle}>
+          <button
+            type="button"
+            style={activeTab === "notes" ? activeTabStyle : tabStyle}
+            onClick={() => setActiveTab("notes")}
+          >
             Notes
           </button>
 
@@ -107,7 +137,7 @@ export default function StudentNotes() {
             type="button"
             style={tabStyle}
             onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/flashcards`)
+              navigate(`/student/lectures/${lectureId}/flashcards`)
             }
           >
             Flashcards
@@ -116,7 +146,7 @@ export default function StudentNotes() {
           <button
             type="button"
             style={tabStyle}
-            onClick={() => navigate(`/student/lectures/${lecture.id}/quiz`)}
+            onClick={() => navigate(`/student/lectures/${lectureId}/quiz`)}
           >
             Quiz
           </button>
@@ -125,7 +155,7 @@ export default function StudentNotes() {
             type="button"
             style={tabStyle}
             onClick={() =>
-              navigate(`/student/lectures/${lecture.id}/transcript`)
+              navigate(`/student/lectures/${lectureId}/transcript`)
             }
           >
             Transcript
@@ -133,106 +163,109 @@ export default function StudentNotes() {
 
           <button
             type="button"
+            style={activeTab === "glossary" ? activeTabStyle : tabStyle}
+            onClick={() => setActiveTab("glossary")}
+          >
+            Glossary
+          </button>
+
+          <button
+            type="button"
             style={tabStyle}
-            onClick={() => navigate(`/student/lectures/${lecture.id}/qa`)}
+            onClick={() => navigate(`/student/lectures/${lectureId}/qa`)}
           >
             Ask
           </button>
         </div>
       </section>
 
-      <section
-        className="card"
-        style={{
-          marginTop: 18,
-          padding: "28px 30px",
-          borderRadius: 15,
-        }}
-      >
-        <p
-          style={{
-            margin: 0,
-            color: "#52647d",
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.11em",
-          }}
-        >
-          Summary
-        </p>
-
-        <p
-          style={{
-            margin: "14px 0 0",
-            color: "#627188",
-            fontSize: 15,
-            lineHeight: 1.8,
-          }}
-        >
-          {Array.isArray(notes) ? notes.join(" ") : notes}
-        </p>
-
-        {noteSections.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-              marginTop: 17,
-            }}
-          >
-            {noteSections.map((section, index) => {
-              const title =
-                typeof section === "string" ? section : section.title;
-
-              return (
-                <span
-                  key={`${title}-${index}`}
+      {activeTab === "notes" ? (
+        !hasNotes ? (
+          <div className="card student-resource-empty" style={{ marginTop: 18 }}>
+            <h3>No notes generated for this lecture</h3>
+            <p>Notes will appear here once generated for this lecture.</p>
+          </div>
+        ) : (
+          <>
+            {note?.summary_text && (
+              <section
+                className="card"
+                style={{
+                  marginTop: 18,
+                  padding: "28px 30px",
+                  borderRadius: 15,
+                }}
+              >
+                <p
                   style={{
-                    padding: "5px 10px",
-                    borderRadius: 999,
-                    background: "#eef2f7",
-                    color: "#627188",
+                    margin: 0,
+                    color: "#52647d",
                     fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.11em",
                   }}
                 >
-                  {title}
-                </span>
-              );
-            })}
+                  Summary
+                </p>
+
+                <p
+                  style={{
+                    margin: "14px 0 0",
+                    color: "#627188",
+                    fontSize: 15,
+                    lineHeight: 1.8,
+                  }}
+                >
+                  {note.summary_text}
+                </p>
+              </section>
+            )}
+
+            {note?.markdown_content && (
+              <section
+                className="card"
+                style={{
+                  marginTop: 18,
+                  padding: "28px 30px",
+                  borderRadius: 15,
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    color: "#0f274f",
+                    fontSize: 18,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Detailed Notes
+                </h3>
+
+                <div
+                  style={{
+                    margin: "14px 0 0",
+                    color: "#627188",
+                    fontSize: 14,
+                    lineHeight: 1.8,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {note.markdown_content}
+                </div>
+              </section>
+            )}
+          </>
+        )
+      ) : (
+        /* GLOSSARY TAB CONTENT */
+        !hasGlossary ? (
+          <div className="card student-resource-empty" style={{ marginTop: 18 }}>
+            <h3>No glossary terms generated for this lecture</h3>
+            <p>Glossary terms will appear here once generated for this lecture.</p>
           </div>
-        )}
-
-        {editedBy && (
-          <p
-            style={{
-              margin: "18px 0 0",
-              color: "#64748b",
-              fontSize: 11,
-              fontStyle: "italic",
-            }}
-          >
-            {formatEditorName(editedBy)}
-          </p>
-        )}
-      </section>
-
-      {noteSections.map((section, index) => {
-        const title =
-          typeof section === "string" ? `Note ${index + 1}` : section.title;
-
-        const description =
-          typeof section === "string" ? section : section.description;
-
-        const points =
-          typeof section === "object" && Array.isArray(section.points)
-            ? section.points
-            : [];
-
-        return (
+        ) : (
           <section
-            key={`${title}-${index}`}
             className="card"
             style={{
               marginTop: 18,
@@ -245,110 +278,46 @@ export default function StudentNotes() {
                 margin: 0,
                 color: "#0f274f",
                 fontSize: 18,
-                lineHeight: 1.4,
               }}
             >
-              {title}
+              Glossary
             </h3>
 
-            {description && (
-              <p
-                style={{
-                  margin: "12px 0 0",
-                  color: "#627188",
-                  fontSize: 14,
-                  lineHeight: 1.8,
-                }}
-              >
-                {description}
-              </p>
-            )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: "18px 28px",
+                marginTop: 20,
+              }}
+            >
+              {glossaryItems.map((item, index) => (
+                <div key={item.id || index}>
+                  <strong
+                    style={{
+                      display: "block",
+                      color: "#0f274f",
+                      fontSize: 14,
+                    }}
+                  >
+                    {item.term}
+                  </strong>
 
-            {points.length > 0 && (
-              <ul
-                style={{
-                  margin: "14px 0 0",
-                  paddingLeft: 22,
-                  color: "#627188",
-                  fontSize: 14,
-                  lineHeight: 1.9,
-                }}
-              >
-                {points.map((point, pointIndex) => (
-                  <li key={pointIndex}>{point}</li>
-                ))}
-              </ul>
-            )}
-
-            {editedBy && (
-              <p
-                style={{
-                  margin: "16px 0 0",
-                  color: "#64748b",
-                  fontSize: 11,
-                  fontStyle: "italic",
-                }}
-              >
-                {formatEditorName(editedBy)}
-              </p>
-            )}
+                  <p
+                    style={{
+                      margin: "5px 0 0",
+                      color: "#627188",
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {item.definition}
+                  </p>
+                </div>
+              ))}
+            </div>
           </section>
-        );
-      })}
-
-      {glossary.length > 0 && (
-        <section
-          className="card"
-          style={{
-            marginTop: 18,
-            padding: "28px 30px",
-            borderRadius: 15,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              color: "#0f274f",
-              fontSize: 18,
-            }}
-          >
-            Glossary
-          </h3>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: "18px 28px",
-              marginTop: 20,
-            }}
-          >
-            {glossary.map((item, index) => (
-              <div key={index}>
-                <strong
-                  style={{
-                    display: "block",
-                    color: "#0f274f",
-                    fontSize: 14,
-                  }}
-                >
-                  {item.term}
-                </strong>
-
-                <p
-                  style={{
-                    margin: "5px 0 0",
-                    color: "#627188",
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {item.definition}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        )
       )}
     </div>
   );
