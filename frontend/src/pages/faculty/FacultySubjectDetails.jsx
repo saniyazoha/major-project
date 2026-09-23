@@ -5,65 +5,139 @@ import {
   CalendarDays,
   Clock,
   User,
+  Loader2,
 } from "lucide-react";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { apiClient } from "../../api/client";
 
-import { subjects } from "../../data/subjects";
-import { lectures } from "../../data/lectures";
+import { subjects as mockSubjects } from "../../data/subjects";
+import { lectures as mockLectures } from "../../data/lectures";
 
 export default function FacultySubjectDetails() {
   const navigate = useNavigate();
   const { subjectId } = useParams();
+
+  const [realSubject, setRealSubject] = useState(null);
+  const [realLectures, setRealLectures] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        setIsLoading(true);
+        const [fetchedSubjects, fetchedLectures] = await Promise.all([
+          apiClient.get("/subjects").catch(() => []),
+          apiClient.get("/lectures").catch(() => []),
+        ]);
+
+        if (isMounted) {
+          if (Array.isArray(fetchedSubjects)) {
+            const found = fetchedSubjects.find(
+              (item) => String(item.id) === String(subjectId)
+            );
+            if (found) {
+              setRealSubject(found);
+            }
+          }
+
+          if (Array.isArray(fetchedLectures)) {
+            const filtered = fetchedLectures.filter(
+              (item) => String(item.subject_id) === String(subjectId)
+            );
+            setRealLectures(filtered);
+          }
+        }
+      } catch (err) {
+        // Ignore fetch errors
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [subjectId]);
 
   /* =====================================================
      FIND SELECTED SUBJECT
   ===================================================== */
 
   const subject = useMemo(() => {
-    return subjects.find((item) => String(item.id) === String(subjectId));
-  }, [subjectId]);
+    if (realSubject) {
+      return {
+        id: realSubject.id,
+        name: realSubject.name,
+        code: `SUB-${realSubject.id}`,
+        description: `${realSubject.name} course subject`,
+      };
+    }
+    return null;
+  }, [realSubject]);
 
   /* =====================================================
-     FIND ONLY THIS SUBJECT'S LECTURES
-
-     subjectId is used first so lectures from another
-     subject cannot accidentally appear here.
-
-     The subject-name check is only a fallback for older
-     frontend data that may not contain subjectId.
+     FIND THIS SUBJECT'S LECTURES
   ===================================================== */
 
   const subjectLectures = useMemo(() => {
-    if (!subject) {
+    if (!realLectures || realLectures.length === 0) {
       return [];
     }
 
-    return lectures.filter((lecture) => {
-      if (lecture.subjectId) {
-        return String(lecture.subjectId) === String(subject.id);
-      }
-
-      return lecture.subject?.toLowerCase() === subject.name?.toLowerCase();
-    });
-  }, [subject]);
+    return realLectures.map((l) => ({
+      id: l.id,
+      subjectId: l.subject_id,
+      title: l.title,
+      status:
+        l.status === "broadcast"
+          ? "Broadcast"
+          : l.status === "processing"
+          ? "Processing"
+          : l.status === "draft"
+          ? "Draft"
+          : "Uploaded",
+      date: l.created_at
+        ? new Date(l.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "Recently",
+      duration: l.file_size
+        ? `${(l.file_size / (1024 * 1024)).toFixed(1)} MB`
+        : "45 mins",
+      lecturer: "Faculty",
+    }));
+  }, [realLectures]);
 
   /* =====================================================
      OPEN SELECTED LECTURE
   ===================================================== */
 
   const openLecture = (lecture) => {
-    const lecturerId = lecture.lecturerId || "unknown-lecturer";
-
-    navigate(
-      `/faculty/subjects/${subject.id}/lecturers/${lecturerId}/lectures/${lecture.id}`,
-    );
+    navigate(`/faculty/lectures/${lecture.id}`);
   };
 
   /* =====================================================
-     SUBJECT NOT FOUND
+     LOADING & SUBJECT NOT FOUND
   ===================================================== */
+
+  if (isLoading) {
+    return (
+      <div className="page" style={{ padding: 40, textAlign: "center", color: "#667085" }}>
+        <Loader2 size={28} className="animate-spin" style={{ margin: "0 auto 12px" }} />
+        <p style={{ margin: 0, fontSize: 14 }}>Loading subject details...</p>
+      </div>
+    );
+  }
 
   if (!subject) {
     return (

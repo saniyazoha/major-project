@@ -1,44 +1,75 @@
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Loader2 } from "lucide-react";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiClient } from "../../api/client";
 
-import { subjects } from "../../data/subjects";
-import { lectures } from "../../data/lectures";
+import { subjects as mockSubjects } from "../../data/subjects";
+import { lectures as mockLectures } from "../../data/lectures";
 
 function FacultySubjects() {
   const navigate = useNavigate();
 
-  /* =====================================================
-     SUBJECTS WITH LECTURE COUNTS
+  const [realSubjects, setRealSubjects] = useState([]);
+  const [realLectures, setRealLectures] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-     Nothing is removed or recreated here.
-     All subjects continue to come from subjects.js.
-  ===================================================== */
+  useEffect(() => {
+    let isMounted = true;
 
-  const subjectsWithLectures = useMemo(() => {
-    return subjects.map((subject) => {
-      const subjectLectures = lectures.filter((lecture) => {
-        if (
-          lecture.subjectId &&
-          String(lecture.subjectId) === String(subject.id)
-        ) {
-          return true;
+    async function loadData() {
+      try {
+        setIsLoading(true);
+        const [fetchedSubjects, fetchedLectures] = await Promise.all([
+          apiClient.get("/subjects").catch(() => []),
+          apiClient.get("/lectures").catch(() => []),
+        ]);
+
+        if (isMounted) {
+          if (Array.isArray(fetchedSubjects)) {
+            setRealSubjects(fetchedSubjects);
+          }
+          if (Array.isArray(fetchedLectures)) {
+            setRealLectures(fetchedLectures);
+          }
+          setIsLoaded(true);
         }
+      } catch (err) {
+        if (isMounted) {
+          setIsLoaded(true);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
 
-        return lecture.subject?.toLowerCase() === subject.name?.toLowerCase();
-      });
+    loadData();
 
-      return {
-        ...subject,
-        lectureCount: subjectLectures.length,
-      };
-    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  /* =====================================================
-     OPEN SUBJECT
-  ===================================================== */
+  const subjectsWithLectures = useMemo(() => {
+    if (!isLoaded) return [];
+
+    return realSubjects.map((subject) => {
+      const count = realLectures.filter(
+        (l) => String(l.subject_id) === String(subject.id)
+      ).length;
+
+      return {
+        id: subject.id,
+        name: subject.name,
+        code: `SUB-${subject.id}`,
+        description: `${subject.name} course subject`,
+        lectureCount: count,
+      };
+    });
+  }, [isLoaded, realSubjects, realLectures]);
 
   const openSubject = (subjectId) => {
     navigate(`/faculty/subjects/${subjectId}`);
@@ -76,7 +107,20 @@ function FacultySubjects() {
           SUBJECT CARDS
       ================================================= */}
 
-      {subjectsWithLectures.length === 0 ? (
+      {isLoading ? (
+        <section
+          className="card"
+          style={{
+            marginTop: 24,
+            padding: 40,
+            textAlign: "center",
+            color: "#667085",
+          }}
+        >
+          <Loader2 size={28} className="animate-spin" style={{ margin: "0 auto 12px" }} />
+          <p style={{ margin: 0, fontSize: 14 }}>Loading subjects...</p>
+        </section>
+      ) : subjectsWithLectures.length === 0 ? (
         <section
           className="card"
           style={{
@@ -96,7 +140,7 @@ function FacultySubjects() {
           </h2>
 
           <p className="muted">
-            Subjects will appear here when they are available.
+            No subjects found for your faculty account on the backend.
           </p>
         </section>
       ) : (

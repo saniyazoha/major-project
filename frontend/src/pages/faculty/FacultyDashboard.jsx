@@ -1,27 +1,94 @@
-import { CalendarDays, Clock3, Plus, SlidersHorizontal } from "lucide-react";
-
+import { CalendarDays, Clock3, Plus, SlidersHorizontal, Loader2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiClient } from "../../api/client";
 
 function FacultyDashboard() {
   const navigate = useNavigate();
 
-  /*
-   * Frontend-only dashboard data.
-   *
-   * These values intentionally match the supplied target UI.
-   * They can later be replaced with API/backend data without
-   * changing the dashboard design.
-   */
+  const [recentUploads, setRecentUploads] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const [broadcastCount, setBroadcastCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchLectures() {
+      try {
+        setIsLoading(true);
+        setError("");
+        const data = await apiClient.get("/lectures");
+
+        if (isMounted && Array.isArray(data)) {
+          setTotalCount(data.length);
+          setBroadcastCount(data.filter((l) => l.status === "broadcast").length);
+
+          const mapped = data.map((lecture) => {
+            const formattedDate = lecture.created_at
+              ? new Date(lecture.created_at).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "Recently";
+
+            const rawStatus = (lecture.status || "uploaded").toLowerCase();
+            let displayStatus = "Uploaded";
+            if (rawStatus === "broadcast") displayStatus = "Broadcast";
+            else if (rawStatus === "processing") displayStatus = "Processing";
+            else if (rawStatus === "draft") displayStatus = "Draft";
+
+            const formattedSize = lecture.file_size
+              ? `${(lecture.file_size / (1024 * 1024)).toFixed(1)} MB`
+              : "45 mins";
+
+            return {
+              id: lecture.id,
+              subjectId: lecture.subject_id,
+              batchId: lecture.batch_id,
+              lecturerId: "faculty",
+              title: lecture.title,
+              code: `SUB-${lecture.subject_id}`,
+              batch: `Batch ${lecture.batch_id}`,
+              date: formattedDate,
+              duration: formattedSize,
+              status: displayStatus,
+              rawStatus,
+            };
+          });
+
+          setRecentUploads(mapped);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err?.message || "Failed to load recent lectures.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchLectures();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const dashboardStats = [
     {
       id: 1,
       label: "LECTURES UPLOADED",
-      value: "41",
+      value: String(totalCount),
     },
     {
       id: 2,
       label: "BROADCAST THIS TERM",
-      value: "34",
+      value: String(broadcastCount),
     },
     {
       id: 3,
@@ -35,49 +102,9 @@ function FacultyDashboard() {
     },
   ];
 
-  /*
-   * Frontend-only recent lecture data.
-   *
-   * These records match the target screenshot.
-   */
-  const recentUploads = [
-    {
-      id: "1",
-      subjectId: "1",
-      lecturerId: "ada-lovelace",
-      title: "Intro to Operating Systems",
-      code: "CS-301",
-      batch: "Batch 2024-A",
-      date: "Oct 24, 2026",
-      duration: "45 mins",
-      status: "Broadcast",
-    },
-    {
-      id: "2",
-      subjectId: "2",
-      lecturerId: "faculty-2",
-      title: "Memory Management Strategies",
-      code: "CS-205",
-      batch: "Batch 2023-B",
-      date: "Oct 22, 2026",
-      duration: "61 mins",
-      status: "Processing",
-    },
-    {
-      id: "3",
-      subjectId: "3",
-      lecturerId: "faculty-3",
-      title: "Advanced Network Architecture",
-      code: "CS-410",
-      batch: "Batch 2024-A",
-      date: "Oct 20, 2026",
-      duration: "55 mins",
-      status: "Draft",
-    },
-  ];
-
   const getStatusStyle = (status) => {
-    if (status === "Broadcast") {
+    const s = (status || "").toLowerCase();
+    if (s === "broadcast") {
       return {
         background: "#dcf3e6",
         color: "#16935b",
@@ -85,11 +112,19 @@ function FacultyDashboard() {
       };
     }
 
-    if (status === "Processing") {
+    if (s === "processing") {
       return {
         background: "#fff0cf",
         color: "#805500",
         dot: "#805500",
+      };
+    }
+
+    if (s === "uploaded") {
+      return {
+        background: "#eaf2ff",
+        color: "#1769aa",
+        dot: "#1769aa",
       };
     }
 
@@ -101,9 +136,7 @@ function FacultyDashboard() {
   };
 
   const handleLectureOpen = (lecture) => {
-    navigate(
-      `/faculty/subjects/${lecture.subjectId}/lecturers/${lecture.lecturerId}/lectures/${lecture.id}`,
-    );
+    navigate(`/faculty/lectures/${lecture.id}`);
   };
 
   return (
@@ -282,8 +315,23 @@ function FacultyDashboard() {
         {/* Lecture list */}
 
         <div>
-          {recentUploads.map((lecture, index) => {
-            const statusStyle = getStatusStyle(lecture.status);
+          {isLoading ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#667085" }}>
+              <Loader2 size={24} className="animate-spin" style={{ margin: "0 auto 8px" }} />
+              <p style={{ margin: 0, fontSize: 14 }}>Loading lectures...</p>
+            </div>
+          ) : error ? (
+            <div style={{ padding: "24px", color: "#b91c1c", background: "#fef2f2", display: "flex", alignItems: "center", gap: 10 }}>
+              <AlertCircle size={18} />
+              <span style={{ fontSize: 14 }}>{error}</span>
+            </div>
+          ) : recentUploads.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#667085" }}>
+              <p style={{ margin: 0, fontSize: 14 }}>No recent lecture uploads found.</p>
+            </div>
+          ) : (
+            recentUploads.map((lecture, index) => {
+              const statusStyle = getStatusStyle(lecture.status);
 
             return (
               <button
@@ -442,7 +490,7 @@ function FacultyDashboard() {
                 </div>
               </button>
             );
-          })}
+          }))}
         </div>
       </section>
     </div>

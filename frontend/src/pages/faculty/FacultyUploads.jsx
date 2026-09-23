@@ -6,12 +6,13 @@ import {
   Languages,
   UploadCloud,
   X,
+  Loader2,
 } from "lucide-react";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { subjects } from "../../data/subjects";
+import { apiClient } from "../../api/client";
+import { subjects as mockSubjects } from "../../data/subjects";
 
 function FacultyUploads() {
   const navigate = useNavigate();
@@ -22,39 +23,67 @@ function FacultyUploads() {
   ===================================================== */
 
   const [lectureTitle, setLectureTitle] = useState("");
-
   const [subjectBatch, setSubjectBatch] = useState("");
-
   const [languageMix, setLanguageMix] = useState("");
-
   const [selectedFile, setSelectedFile] = useState(null);
-
   const [error, setError] = useState("");
-
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [subjectBatchOptions, setSubjectBatchOptions] = useState([]);
 
   /* =====================================================
-     EXISTING SUBJECT + BATCH OPTIONS
-
-     Subjects come from the existing subjects data.
-     Batches use the confirmed frontend batches already
-     shown in the existing LectAI UI.
+     LOAD ACADEMIC SUBJECTS + BATCHES FROM BACKEND
   ===================================================== */
 
-  const batchBySubjectId = {
-    1: "Batch 2024-A",
-    2: "Batch 2024-A",
-    3: "Batch 2023-B",
-    4: "Batch 2023-B",
-    5: "Batch 2024-A",
-  };
+  useEffect(() => {
+    let isMounted = true;
 
-  const subjectBatchOptions = subjects.map((subject) => ({
-    subjectId: subject.id,
-    subjectName: subject.name,
-    subjectCode: subject.code,
-    batch: batchBySubjectId[String(subject.id)] || "Batch 2024-A",
-  }));
+    async function loadAcademicData() {
+      try {
+        const fetchedSubjects = await apiClient.get("/subjects");
+
+        if (!Array.isArray(fetchedSubjects) || fetchedSubjects.length === 0) {
+          if (isMounted) {
+            setSubjectBatchOptions([]);
+          }
+          return;
+        }
+
+        const options = [];
+        for (const sub of fetchedSubjects) {
+          try {
+            const batches = await apiClient.get(`/subjects/${sub.id}/batches`);
+            if (Array.isArray(batches) && batches.length > 0) {
+              for (const b of batches) {
+                options.push({
+                  subjectId: sub.id,
+                  batchId: b.id,
+                  subjectName: sub.name,
+                  subjectCode: `SUB-${sub.id}`,
+                  batch: b.batchname,
+                });
+              }
+            }
+          } catch (err) {
+            // Ignore batch fetch error
+          }
+        }
+
+        if (isMounted) {
+          setSubjectBatchOptions(options);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setSubjectBatchOptions([]);
+        }
+      }
+    }
+
+    loadAcademicData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   /* =====================================================
      LANGUAGE OPTIONS
@@ -196,7 +225,7 @@ function FacultyUploads() {
     subjectBatch &&
     languageMix &&
     selectedFile &&
-    !isTranscribing;
+    !isUploading;
 
   /* =====================================================
      CLEAR FORM
@@ -231,10 +260,10 @@ function FacultyUploads() {
   };
 
   /* =====================================================
-     START TRANSCRIPTION
+     REAL BACKEND UPLOAD
   ===================================================== */
 
-  const handleStartTranscription = (event) => {
+  const handleStartTranscription = async (event) => {
     event.preventDefault();
 
     setError("");
@@ -263,29 +292,30 @@ function FacultyUploads() {
       return;
     }
 
-    setIsTranscribing(true);
+    const parts = subjectBatch.split("|");
+    const selectedBatchId = parseInt(parts[1], 10) || 1;
 
-    /*
-     * FRONTEND-ONLY TRANSCRIPTION FLOW
-     *
-     * This keeps the existing demo-style processing flow.
-     * Backend transcription can later replace this block.
-     *
-     * Generated content is NOT automatically published.
-     * Faculty must review/edit it before publishing.
-     */
+    setIsUploading(true);
 
-    setTimeout(() => {
-      setIsTranscribing(false);
+    try {
+      const formData = new FormData();
+      formData.append("title", lectureTitle.trim());
+      formData.append("batch_id", selectedBatchId);
+      formData.append("file", selectedFile);
 
-      alert(
-        "Lecture uploaded successfully. Transcription processing has started in demo mode. Generated content must be reviewed before publishing.",
-      );
+      const createdLecture = await apiClient.post("/lectures/upload", formData);
 
+      setIsUploading(false);
       clearForm();
-
-      navigate("/faculty/dashboard");
-    }, 1200);
+      navigate(`/faculty/lectures/${createdLecture.id}`);
+    } catch (err) {
+      setIsUploading(false);
+      const message =
+        err?.message ||
+        err?.detail ||
+        "Upload failed. Please verify the file format and try again.";
+      setError(message);
+    }
   };
 
   /* =====================================================
@@ -399,7 +429,7 @@ function FacultyUploads() {
               setError("");
             }}
             placeholder="Enter lecture title"
-            disabled={isTranscribing}
+            disabled={isUploading}
           />
         </div>
 
@@ -427,14 +457,18 @@ function FacultyUploads() {
                 setSubjectBatch(event.target.value);
                 setError("");
               }}
-              disabled={isTranscribing}
+              disabled={isUploading || subjectBatchOptions.length === 0}
             >
-              <option value="">Select subject and batch</option>
+              {subjectBatchOptions.length === 0 ? (
+                <option value="">No subjects/batches available on backend</option>
+              ) : (
+                <option value="">Select subject and batch</option>
+              )}
 
               {subjectBatchOptions.map((item) => (
                 <option
-                  key={`${item.subjectId}-${item.batch}`}
-                  value={`${item.subjectId}|${item.batch}`}
+                  key={`${item.subjectId}-${item.batchId || item.batch}`}
+                  value={`${item.subjectId}|${item.batchId || 1}|${item.batch}`}
                 >
                   {item.subjectName}
                   {item.subjectCode ? ` (${item.subjectCode})` : ""}
@@ -443,6 +477,12 @@ function FacultyUploads() {
                 </option>
               ))}
             </select>
+
+            {subjectBatchOptions.length === 0 && (
+              <p style={{ margin: "6px 0 0", fontSize: 12, color: "#667085" }}>
+                No active subjects/batches found for your account on the backend.
+              </p>
+            )}
           </div>
 
           {/* Language */}
@@ -467,7 +507,7 @@ function FacultyUploads() {
                 setLanguageMix(event.target.value);
                 setError("");
               }}
-              disabled={isTranscribing}
+              disabled={isUploading}
             >
               <option value="">Select language mix</option>
 
@@ -530,7 +570,7 @@ function FacultyUploads() {
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onClick={() => {
-                if (!isTranscribing) {
+                if (!isUploading) {
                   fileInputRef.current?.click();
                 }
               }}
@@ -538,7 +578,7 @@ function FacultyUploads() {
               tabIndex={0}
               onKeyDown={(event) => {
                 if (
-                  !isTranscribing &&
+                  !isUploading &&
                   (event.key === "Enter" || event.key === " ")
                 ) {
                   event.preventDefault();
@@ -547,7 +587,7 @@ function FacultyUploads() {
                 }
               }}
               style={{
-                cursor: isTranscribing ? "not-allowed" : "pointer",
+                cursor: isUploading ? "not-allowed" : "pointer",
                 padding: "38px 22px",
                 textAlign: "center",
               }}
@@ -614,7 +654,7 @@ function FacultyUploads() {
                 type="file"
                 accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a,audio/mp4"
                 onChange={handleFileChange}
-                disabled={isTranscribing}
+                disabled={isUploading}
                 style={{
                   display: "none",
                 }}
@@ -689,7 +729,7 @@ function FacultyUploads() {
               <button
                 type="button"
                 onClick={removeFile}
-                disabled={isTranscribing}
+                disabled={isUploading}
                 aria-label="Remove selected file"
                 title="Remove selected file"
                 style={{
@@ -701,7 +741,7 @@ function FacultyUploads() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  cursor: isTranscribing ? "not-allowed" : "pointer",
+                  cursor: isUploading ? "not-allowed" : "pointer",
                   flexShrink: 0,
                 }}
               >
@@ -787,7 +827,7 @@ function FacultyUploads() {
             type="button"
             className="secondary-action-button"
             onClick={handleCancel}
-            disabled={isTranscribing}
+            disabled={isUploading}
           >
             Cancel
           </button>
@@ -795,21 +835,27 @@ function FacultyUploads() {
           <button
             type="submit"
             className="primary-action-button"
-            disabled={!isFormComplete}
+            disabled={!isFormComplete || isUploading}
             style={{
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              opacity: isFormComplete ? 1 : 0.55,
-              cursor: isFormComplete ? "pointer" : "not-allowed",
+              opacity: isFormComplete && !isUploading ? 1 : 0.55,
+              cursor: isFormComplete && !isUploading ? "pointer" : "not-allowed",
             }}
           >
-            <UploadCloud size={17} />
-
-            {isTranscribing
-              ? "Starting Transcription..."
-              : "Start Transcription"}
+            {isUploading ? (
+              <>
+                <Loader2 size={17} className="animate-spin" />
+                <span>Uploading...</span>
+              </>
+            ) : (
+              <>
+                <UploadCloud size={17} />
+                <span>Upload Lecture</span>
+              </>
+            )}
           </button>
         </div>
       </form>
