@@ -2052,17 +2052,18 @@ function FacultyLectureDetails() {
         type="button"
         className="primary-action-button"
         onClick={() => {
-          if (subjectId && lecturerId && lectureId) {
+          const targetLecId = lectureId || lecture?.id;
+          if (subjectId && lecturerId && targetLecId) {
             navigate(
-              `/faculty/subjects/${subjectId}/lecturers/${lecturerId}/lectures/${lectureId}/analytics`,
+              `/faculty/subjects/${subjectId}/lecturers/${lecturerId}/lectures/${targetLecId}/analytics`,
             );
-
             return;
           }
-
-          navigate(
-            `/faculty/analytics/${subject?.id || "subject"}/${lecturerId || "lecturer"}/${lecture?.id}`,
-          );
+          if (targetLecId) {
+            navigate(`/faculty/lectures/${targetLecId}/analytics`);
+            return;
+          }
+          navigate("/faculty/subjects");
         }}
         style={{
           marginTop: 16,

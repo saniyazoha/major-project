@@ -1,317 +1,197 @@
 import {
+  AlertCircle,
   ArrowLeft,
-  BarChart3,
+  BookOpen,
   CheckCircle2,
-  Clock3,
-  FileText,
-  Layers3,
-  Mic2,
-  NotebookText,
-  Radio,
-  Users,
+  Clock,
+  RefreshCw,
+  Sparkles,
+  Tag,
 } from "lucide-react";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { apiClient } from "../../api/client";
 
-import { subjects } from "../../data/subjects";
-import { lectures } from "../../data/lectures";
-
-function FacultyAnalytics() {
+export default function FacultyAnalytics() {
   const navigate = useNavigate();
+  const routeParams = useParams();
 
-  const { subjectId, lecturerId, lectureId } = useParams();
+  const lectureId = routeParams.lectureId;
+  const subjectId = routeParams.subjectId;
+  const lecturerId = routeParams.lecturerId;
 
-  /* =====================================================
-     SUBJECT
-  ===================================================== */
+  const [lecture, setLecture] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [statusState, setStatusState] = useState("idle"); // 'idle' | 'loaded' | 'not_generated' | 'transcript_not_ready' | 'forbidden' | 'error'
+  const [errorMessage, setErrorMessage] = useState(null);
 
-  const subject = useMemo(() => {
-    return subjects.find((item) => String(item.id) === String(subjectId));
-  }, [subjectId]);
+  const fetchAnalytics = async () => {
+    if (!lectureId) return;
 
-  /* =====================================================
-     LECTURE
-  ===================================================== */
+    try {
+      setLoading(true);
+      setErrorMessage(null);
 
-  const lecture = useMemo(() => {
-    return lectures.find((item) => String(item.id) === String(lectureId));
-  }, [lectureId]);
+      // Fetch lecture metadata for context header
+      try {
+        const lec = await apiClient.get(`/lectures/${lectureId}`);
+        if (lec) setLecture(lec);
+      } catch (err) {
+        // Ignore header metadata fetch error
+      }
 
-  const lecturerName = lecture?.lecturer || "Dr. Ananya Sharma";
-
-  /* =====================================================
-     FRONTEND ANALYTICS DATA
-  ===================================================== */
-
-  const analytics = useMemo(() => {
-    const id = String(lectureId);
-
-    if (id === "1") {
-      return {
-        speakingRate: 142,
-        clarity: 91,
-        fillerRatio: 3.8,
-        averageSpeakingRate: 145,
-        totalWords: 8426,
-        status: "Complete",
-
-        speakingIntervals: [
-          {
-            time: "0–10 min",
-            rate: 138,
-          },
-          {
-            time: "10–20 min",
-            rate: 145,
-          },
-          {
-            time: "20–30 min",
-            rate: 149,
-          },
-          {
-            time: "30–40 min",
-            rate: 141,
-          },
-          {
-            time: "40–45 min",
-            rate: 146,
-          },
-        ],
-
-        fillerWords: [
-          {
-            word: "um",
-            count: 12,
-          },
-          {
-            word: "okay",
-            count: 9,
-          },
-          {
-            word: "so",
-            count: 8,
-          },
-          {
-            word: "actually",
-            count: 5,
-          },
-        ],
-
-        repeatedWords: [
-          {
-            word: "system",
-            count: 15,
-          },
-          {
-            word: "process",
-            count: 12,
-          },
-          {
-            word: "memory",
-            count: 11,
-          },
-          {
-            word: "management",
-            count: 10,
-          },
-          {
-            word: "operating",
-            count: 9,
-          },
-        ],
-
-        quizSubmissions: 38,
-        enrolledStudents: 42,
-        averageQuizScore: 78,
-        quizCompletion: 90,
-
-        learningMaterials: [
-          {
-            id: 1,
-            title: "Complete Transcript",
-            description: "Faculty-reviewed lecture transcript.",
-            icon: FileText,
-          },
-          {
-            id: 2,
-            title: "Lecture Notes",
-            description: "AI-generated notes prepared for review.",
-            icon: NotebookText,
-          },
-          {
-            id: 3,
-            title: "Flashcards",
-            description: "Generated revision cards for the lecture.",
-            icon: Layers3,
-          },
-          {
-            id: 4,
-            title: "Quiz",
-            description: "Generated quiz questions and answers.",
-            icon: CheckCircle2,
-          },
-        ],
-      };
+      // Fetch real backend analytics
+      const data = await apiClient.get(`/lectures/${lectureId}/analytics`);
+      setAnalytics(data);
+      setStatusState("loaded");
+    } catch (err) {
+      if (err.status === 404) {
+        setStatusState("not_generated");
+      } else if (err.status === 403) {
+        setStatusState("forbidden");
+        setErrorMessage(
+          "Access denied. You do not have permission to view analytics for this lecture.",
+        );
+      } else {
+        setStatusState("error");
+        setErrorMessage(
+          err.message || "Failed to load lecture analytics. Please try again.",
+        );
+      }
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return {
-      speakingRate: 140,
-      clarity: 90,
-      fillerRatio: 4.2,
-      averageSpeakingRate: 143,
-      totalWords: 8000,
-      status: "Complete",
-
-      speakingIntervals: [
-        {
-          time: "0–10 min",
-          rate: 136,
-        },
-        {
-          time: "10–20 min",
-          rate: 141,
-        },
-        {
-          time: "20–30 min",
-          rate: 146,
-        },
-        {
-          time: "30–40 min",
-          rate: 143,
-        },
-        {
-          time: "40–50 min",
-          rate: 149,
-        },
-      ],
-
-      fillerWords: [
-        {
-          word: "um",
-          count: 10,
-        },
-        {
-          word: "so",
-          count: 8,
-        },
-        {
-          word: "okay",
-          count: 6,
-        },
-        {
-          word: "basically",
-          count: 4,
-        },
-      ],
-
-      repeatedWords: [
-        {
-          word: "software",
-          count: 15,
-        },
-        {
-          word: "system",
-          count: 13,
-        },
-        {
-          word: "design",
-          count: 11,
-        },
-        {
-          word: "development",
-          count: 9,
-        },
-        {
-          word: "process",
-          count: 8,
-        },
-      ],
-
-      quizSubmissions: 34,
-      enrolledStudents: 40,
-      averageQuizScore: 76,
-      quizCompletion: 85,
-
-      learningMaterials: [
-        {
-          id: 1,
-          title: "Complete Transcript",
-          description: "Faculty-reviewed lecture transcript.",
-          icon: FileText,
-        },
-        {
-          id: 2,
-          title: "Lecture Notes",
-          description: "AI-generated notes prepared for review.",
-          icon: NotebookText,
-        },
-        {
-          id: 3,
-          title: "Flashcards",
-          description: "Generated revision cards for the lecture.",
-          icon: Layers3,
-        },
-        {
-          id: 4,
-          title: "Quiz",
-          description: "Generated quiz questions and answers.",
-          icon: CheckCircle2,
-        },
-      ],
-    };
+  useEffect(() => {
+    fetchAnalytics();
   }, [lectureId]);
 
-  /* =====================================================
-     CLARITY CIRCLE
-  ===================================================== */
+  const handleGenerateAnalytics = async () => {
+    if (!lectureId || generating) return;
 
-  const clarityDegrees = analytics.clarity * 3.6;
+    try {
+      setGenerating(true);
+      setErrorMessage(null);
 
-  /* =====================================================
-     MAX RATE
-  ===================================================== */
-
-  const maxRate = Math.max(
-    ...analytics.speakingIntervals.map((item) => item.rate),
-  );
-
-  /* =====================================================
-     BACK
-  ===================================================== */
+      const data = await apiClient.post(`/lectures/${lectureId}/analytics`);
+      setAnalytics(data);
+      setStatusState("loaded");
+    } catch (err) {
+      if (err.status === 409) {
+        setStatusState("transcript_not_ready");
+        setErrorMessage(
+          err.message ||
+            "Analytics cannot be generated because audio transcription is not completed yet.",
+        );
+      } else if (err.status === 403) {
+        setStatusState("forbidden");
+        setErrorMessage(
+          "Access denied. You do not have permission to generate analytics for this lecture.",
+        );
+      } else {
+        setStatusState("error");
+        setErrorMessage(
+          err.message ||
+            "Failed to compute lecture analytics. Please try again.",
+        );
+      }
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleBack = () => {
     if (subjectId && lecturerId && lectureId) {
       navigate(
         `/faculty/subjects/${subjectId}/lecturers/${lecturerId}/lectures/${lectureId}`,
       );
-
       return;
     }
-
+    if (lectureId) {
+      navigate(`/faculty/lectures/${lectureId}`);
+      return;
+    }
     navigate("/faculty/subjects");
+  };
+
+  // Safe parsers for JSON string fields returned by the backend
+  const avgWpm = analytics?.avg_wpm ? Math.round(analytics.avg_wpm) : 0;
+
+  const wpmSegments = useMemo(() => {
+    if (!analytics?.wpm_by_segment_json) return [];
+    try {
+      const parsed = JSON.parse(analytics.wpm_by_segment_json);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }, [analytics]);
+
+  const wordFrequency = useMemo(() => {
+    if (!analytics?.word_frequency_json) return [];
+    try {
+      const parsed = JSON.parse(analytics.word_frequency_json);
+      if (typeof parsed === "object" && parsed !== null) {
+        return Object.entries(parsed)
+          .map(([word, count]) => ({ word, count }))
+          .sort((a, b) => b.count - a.count);
+      }
+    } catch (e) {}
+    return [];
+  }, [analytics]);
+
+  const fillerWordCounts = useMemo(() => {
+    if (!analytics?.filler_word_counts_json) return [];
+    try {
+      const parsed = JSON.parse(analytics.filler_word_counts_json);
+      if (typeof parsed === "object" && parsed !== null) {
+        return Object.entries(parsed)
+          .map(([word, count]) => ({ word, count }))
+          .sort((a, b) => b.count - a.count);
+      }
+    } catch (e) {}
+    return [];
+  }, [analytics]);
+
+  const keywordFrequency = useMemo(() => {
+    if (!analytics?.keyword_frequency_json) return [];
+    try {
+      const parsed = JSON.parse(analytics.keyword_frequency_json);
+      if (typeof parsed === "object" && parsed !== null) {
+        return Object.entries(parsed)
+          .map(([word, count]) => ({ word, count }))
+          .sort((a, b) => b.count - a.count);
+      }
+    } catch (e) {}
+    return [];
+  }, [analytics]);
+
+  const maxSegmentWpm = useMemo(() => {
+    if (wpmSegments.length === 0) return 200;
+    return Math.max(...wpmSegments.map((s) => s.wpm || 0), 150);
+  }, [wpmSegments]);
+
+  const formatSecondsToTime = (seconds) => {
+    if (typeof seconds !== "number" || isNaN(seconds)) return "00:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
   return (
     <div className="page">
-      {/* =====================================================
-          BACK
-      ===================================================== */}
-
+      {/* Back Button */}
       <button type="button" className="back-button" onClick={handleBack}>
         <ArrowLeft size={16} />
         Back to Lecture
       </button>
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
-      <section
-        style={{
-          marginTop: 20,
-        }}
-      >
+      {/* Page Header */}
+      <section style={{ marginTop: 20 }}>
         <div
           style={{
             display: "flex",
@@ -322,767 +202,599 @@ function FacultyAnalytics() {
           }}
         >
           <div>
-            <p className="eyebrow">LECTURE ANALYTICS</p>
-
-            <h1
-              style={{
-                marginTop: 6,
-                marginBottom: 7,
-                fontSize: 31,
-              }}
-            >
-              Analytics
+            <p className="eyebrow">FACULTY ANALYTICS</p>
+            <h1 style={{ marginTop: 6, marginBottom: 7, fontSize: 31 }}>
+              Lecture Analytics
             </h1>
-
-            <p
-              className="muted"
-              style={{
-                margin: 0,
-                fontSize: 13,
-              }}
-            >
-              {subject?.name || "Subject"}
-              {" • "}
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>
               {lecture?.title || "Selected Lecture"}
             </p>
-
-            <p
-              className="muted"
-              style={{
-                marginTop: 5,
-                fontSize: 13,
-              }}
-            >
-              Lecturer: <strong>{lecturerName}</strong>
-            </p>
           </div>
 
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "7px 11px",
-              borderRadius: 999,
-              background: "#e9f7ef",
-              color: "#18794e",
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            <CheckCircle2 size={15} />
-            Analysis Complete
-          </span>
-        </div>
-      </section>
-
-      {/* =====================================================
-          MAIN METRICS
-      ===================================================== */}
-
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-          gap: 16,
-          marginTop: 26,
-        }}
-      >
-        {/* Speaking Rate */}
-
-        <div
-          className="card"
-          style={{
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 10,
-              background: "#eef4fb",
-              color: "#173b6d",
-            }}
-          >
-            <Mic2 size={20} />
-          </div>
-
-          <p
-            className="muted"
-            style={{
-              marginTop: 15,
-              marginBottom: 4,
-              fontSize: 12,
-            }}
-          >
-            Speaking Rate
-          </p>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 27,
-            }}
-          >
-            {analytics.speakingRate}
+          {statusState === "loaded" && (
             <span
               style={{
-                fontSize: 13,
-                marginLeft: 5,
-                fontWeight: 500,
-                color: "#667085",
-              }}
-            >
-              WPM
-            </span>
-          </h2>
-        </div>
-
-        {/* Clarity */}
-
-        <div
-          className="card"
-          style={{
-            padding: 20,
-          }}
-        >
-          <p
-            className="muted"
-            style={{
-              margin: 0,
-              fontSize: 12,
-            }}
-          >
-            Clarity Score
-          </p>
-
-          <div
-            style={{
-              marginTop: 10,
-              display: "flex",
-              justifyContent: "center",
-            }}
-          >
-            <div
-              style={{
-                width: 84,
-                height: 84,
-                borderRadius: "50%",
-                background: `conic-gradient(
-                  #1f6feb ${clarityDegrees}deg,
-                  #e6ebf2 ${clarityDegrees}deg
-                )`,
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                justifyContent: "center",
+                gap: 6,
+                padding: "7px 11px",
+                borderRadius: 999,
+                background: "#e9f7ef",
+                color: "#18794e",
+                fontSize: 12,
+                fontWeight: 700,
               }}
             >
-              <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: "50%",
-                  background: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: "#102a43",
-                }}
-              >
-                {analytics.clarity}%
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filler Ratio */}
-
-        <div
-          className="card"
-          style={{
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 10,
-              background: "#eef4fb",
-              color: "#173b6d",
-            }}
-          >
-            <BarChart3 size={20} />
-          </div>
-
-          <p
-            className="muted"
-            style={{
-              marginTop: 15,
-              marginBottom: 4,
-              fontSize: 12,
-            }}
-          >
-            Filler Ratio
-          </p>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 27,
-            }}
-          >
-            {analytics.fillerRatio}%
-          </h2>
-        </div>
-
-        {/* Average Pace */}
-
-        <div
-          className="card"
-          style={{
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 10,
-              background: "#eef4fb",
-              color: "#173b6d",
-            }}
-          >
-            <Clock3 size={20} />
-          </div>
-
-          <p
-            className="muted"
-            style={{
-              marginTop: 15,
-              marginBottom: 4,
-              fontSize: 12,
-            }}
-          >
-            Average Speaking Pace
-          </p>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 27,
-            }}
-          >
-            {analytics.averageSpeakingRate}
-            <span
-              style={{
-                marginLeft: 5,
-                fontSize: 13,
-                color: "#667085",
-                fontWeight: 500,
-              }}
-            >
-              WPM
+              <CheckCircle2 size={15} />
+              Analysis Complete
             </span>
-          </h2>
+          )}
         </div>
       </section>
 
-      {/* =====================================================
-          SPEAKING RATE INTERVALS
-      ===================================================== */}
+      {/* Main Content Area based on statusState */}
 
-      <section
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 24,
-        }}
-      >
-        <p className="eyebrow">SPEAKING RATE</p>
-
-        <h2
-          style={{
-            marginTop: 5,
-          }}
-        >
-          Speaking Rate by Interval
-        </h2>
-
-        <p
-          className="muted"
-          style={{
-            marginTop: 5,
-            fontSize: 12,
-          }}
-        >
-          Average words per minute across different parts of the lecture.
-        </p>
-
-        <div
-          style={{
-            display: "grid",
-            gap: 15,
-            marginTop: 22,
-          }}
-        >
-          {analytics.speakingIntervals.map((item) => {
-            const width = (item.rate / maxRate) * 100;
-
-            return (
-              <div
-                key={item.time}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr 70px",
-                  gap: 12,
-                  alignItems: "center",
-                }}
-              >
-                <span
-                  style={{
-                    color: "#64748b",
-                    fontSize: 12,
-                  }}
-                >
-                  {item.time}
-                </span>
-
-                <div
-                  style={{
-                    height: 9,
-                    borderRadius: 999,
-                    overflow: "hidden",
-                    background: "#e8edf4",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${width}%`,
-                      borderRadius: 999,
-                      background: "#1f6feb",
-                    }}
-                  />
-                </div>
-
-                <strong
-                  style={{
-                    fontSize: 12,
-                    textAlign: "right",
-                  }}
-                >
-                  {item.rate} WPM
-                </strong>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* =====================================================
-          FILLER + REPEATED WORDS
-      ===================================================== */}
-
-      <section
-        style={{
-          marginTop: 20,
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: 18,
-        }}
-      >
-        {/* Fillers */}
-
+      {loading ? (
         <div
           className="card"
-          style={{
-            padding: 24,
-          }}
+          style={{ marginTop: 24, padding: 40, textAlign: "center" }}
         >
-          <p className="eyebrow">SPEECH PATTERNS</p>
-
-          <h2
-            style={{
-              marginTop: 5,
-              fontSize: 19,
-            }}
-          >
-            Filler Words
-          </h2>
-
           <div
             style={{
-              display: "grid",
-              gap: 10,
-              marginTop: 18,
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 16,
             }}
           >
-            {analytics.fillerWords.map((item) => (
-              <div
-                key={item.word}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  padding: "11px 13px",
-                  borderRadius: 8,
-                  background: "#f7f9fc",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "#475569",
-                  }}
-                >
-                  “{item.word}”
-                </span>
-
-                <strong
-                  style={{
-                    fontSize: 12,
-                  }}
-                >
-                  {item.count}
-                </strong>
-              </div>
-            ))}
+            <RefreshCw
+              size={32}
+              className="animate-spin"
+              style={{ color: "#1f6feb" }}
+            />
           </div>
+          <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+            Loading lecture analytics...
+          </p>
         </div>
-
-        {/* Repeated */}
-
+      ) : statusState === "not_generated" ? (
         <div
           className="card"
-          style={{
-            padding: 24,
-          }}
+          style={{ marginTop: 24, padding: 40, textAlign: "center" }}
         >
-          <p className="eyebrow">WORD FREQUENCY</p>
-
-          <h2
-            style={{
-              marginTop: 5,
-              fontSize: 19,
-            }}
-          >
-            Repeated Words
-          </h2>
-
           <div
             style={{
-              display: "grid",
-              gap: 10,
-              marginTop: 18,
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 16,
             }}
           >
-            {analytics.repeatedWords.map((item) => (
-              <div
-                key={item.word}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "11px 13px",
-                  borderRadius: 8,
-                  background: "#f7f9fc",
-                }}
-              >
-                <span
-                  style={{
-                    color: "#475569",
-                    fontSize: 13,
-                  }}
-                >
-                  {item.word}
-                </span>
-
-                <strong
-                  style={{
-                    fontSize: 12,
-                  }}
-                >
-                  {item.count}
-                </strong>
-              </div>
-            ))}
+            <Sparkles size={38} style={{ color: "#1f6feb" }} />
           </div>
+          <h3 style={{ fontSize: 18, marginBottom: 8, color: "#0f274f" }}>
+            Analytics Not Computed Yet
+          </h3>
+          <p
+            className="muted"
+            style={{
+              maxWidth: 520,
+              margin: "0 auto 20px",
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            Analytics have not been generated for this lecture. Compute overall
+            speaking pace, segment WPM, filler words, and glossary keyword
+            frequencies.
+          </p>
+          <button
+            type="button"
+            className="primary-action-button"
+            onClick={handleGenerateAnalytics}
+            disabled={generating}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          >
+            {generating ? (
+              <>
+                <RefreshCw
+                  size={15}
+                  style={{ animation: "spin 1.5s linear infinite" }}
+                />
+                Computing Analytics...
+              </>
+            ) : (
+              <>
+                <Sparkles size={15} />
+                Generate Analytics
+              </>
+            )}
+          </button>
         </div>
-      </section>
-
-      {/* =====================================================
-          QUIZ PERFORMANCE
-      ===================================================== */}
-
-      <section
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 24,
-        }}
-      >
+      ) : statusState === "transcript_not_ready" ? (
         <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 20,
-            flexWrap: "wrap",
-          }}
+          className="card"
+          style={{ marginTop: 24, padding: 40, textAlign: "center" }}
         >
-          <div>
-            <p className="eyebrow">STUDENT PERFORMANCE</p>
-
-            <h2
-              style={{
-                marginTop: 5,
-              }}
-            >
-              Quiz Performance
-            </h2>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 16,
+            }}
+          >
+            <AlertCircle size={38} style={{ color: "#d97706" }} />
           </div>
-
+          <h3 style={{ fontSize: 18, marginBottom: 8, color: "#92400e" }}>
+            Transcript Required First
+          </h3>
+          <p
+            className="muted"
+            style={{
+              maxWidth: 520,
+              margin: "0 auto 20px",
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            {errorMessage ||
+              "Analytics computation requires a completed audio transcription. Please transcribe the lecture audio first."}
+          </p>
           <button
             type="button"
             className="secondary-action-button"
-            onClick={() => navigate("/faculty/student-progress")}
+            onClick={handleBack}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           >
-            <Users size={16} />
-            Student Progress
+            <ArrowLeft size={15} />
+            Back to Lecture Details
           </button>
         </div>
-
+      ) : statusState === "forbidden" ? (
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 16,
-            marginTop: 22,
-          }}
+          className="card"
+          style={{ marginTop: 24, padding: 40, textAlign: "center" }}
         >
           <div
             style={{
-              padding: 18,
-              borderRadius: 10,
-              background: "#f7f9fc",
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 16,
             }}
           >
-            <p
-              className="muted"
-              style={{
-                margin: 0,
-                fontSize: 12,
-              }}
-            >
-              Quiz Submissions
-            </p>
-
-            <h2
-              style={{
-                marginTop: 7,
-                marginBottom: 0,
-              }}
-            >
-              {analytics.quizSubmissions}
-              <span
-                style={{
-                  marginLeft: 4,
-                  color: "#667085",
-                  fontSize: 13,
-                  fontWeight: 500,
-                }}
-              >
-                / {analytics.enrolledStudents}
-              </span>
-            </h2>
+            <AlertCircle size={38} style={{ color: "#e11d48" }} />
           </div>
-
-          <div
-            style={{
-              padding: 18,
-              borderRadius: 10,
-              background: "#f7f9fc",
-            }}
+          <h3 style={{ fontSize: 18, marginBottom: 8, color: "#9f1239" }}>
+            Access Denied
+          </h3>
+          <p className="muted" style={{ margin: "0 auto 20px", fontSize: 14 }}>
+            {errorMessage ||
+              "You do not have permission to access analytics for this lecture."}
+          </p>
+          <button
+            type="button"
+            className="secondary-action-button"
+            onClick={handleBack}
           >
-            <p
-              className="muted"
-              style={{
-                margin: 0,
-                fontSize: 12,
-              }}
-            >
-              Average Quiz Score
-            </p>
-
-            <h2
-              style={{
-                marginTop: 7,
-                marginBottom: 0,
-              }}
-            >
-              {analytics.averageQuizScore}%
-            </h2>
-          </div>
-
-          <div
-            style={{
-              padding: 18,
-              borderRadius: 10,
-              background: "#f7f9fc",
-            }}
-          >
-            <p
-              className="muted"
-              style={{
-                margin: 0,
-                fontSize: 12,
-              }}
-            >
-              Completion
-            </p>
-
-            <h2
-              style={{
-                marginTop: 7,
-                marginBottom: 0,
-              }}
-            >
-              {analytics.quizCompletion}%
-            </h2>
-          </div>
+            Back
+          </button>
         </div>
-
+      ) : statusState === "error" ? (
         <div
-          style={{
-            marginTop: 18,
-            height: 9,
-            borderRadius: 999,
-            background: "#e7edf5",
-            overflow: "hidden",
-          }}
+          className="card"
+          style={{ marginTop: 24, padding: 40, textAlign: "center" }}
         >
           <div
             style={{
-              width: `${analytics.quizCompletion}%`,
-              height: "100%",
-              borderRadius: 999,
-              background: "#1f6feb",
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 16,
             }}
-          />
+          >
+            <AlertCircle size={38} style={{ color: "#e11d48" }} />
+          </div>
+          <h3 style={{ fontSize: 18, marginBottom: 8, color: "#0f274f" }}>
+            Failed to Load Analytics
+          </h3>
+          <p
+            className="muted"
+            style={{
+              maxWidth: 520,
+              margin: "0 auto 20px",
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            {errorMessage || "An unexpected error occurred."}
+          </p>
+          <button
+            type="button"
+            className="secondary-action-button"
+            onClick={fetchAnalytics}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
         </div>
-      </section>
-
-      {/* =====================================================
-          LEARNING MATERIALS
-      ===================================================== */}
-
-      <section
-        className="card"
-        style={{
-          marginTop: 20,
-          padding: 24,
-          marginBottom: 24,
-        }}
-      >
-        <p className="eyebrow">GENERATED MATERIALS</p>
-
-        <h2
-          style={{
-            marginTop: 5,
-          }}
-        >
-          Lecture Learning Materials
-        </h2>
-
-        <p
-          className="muted"
-          style={{
-            marginTop: 5,
-            fontSize: 12,
-          }}
-        >
-          Review the generated learning resources before publishing them to
-          students.
-        </p>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-            gap: 14,
-            marginTop: 20,
-          }}
-        >
-          {analytics.learningMaterials.map((material) => {
-            const Icon = material.icon;
-
-            return (
+      ) : (
+        /* Real Analytics Rendered (statusState === 'loaded') */
+        <>
+          {/* =====================================================
+              1. OVERALL PACING METRIC
+          ===================================================== */}
+          <section
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(1, minmax(0, 1fr))",
+              marginTop: 24,
+            }}
+          >
+            <div className="card" style={{ padding: 24 }}>
               <div
-                key={material.id}
                 style={{
-                  padding: 17,
-                  border: "1px solid #e4e9f1",
-                  borderRadius: 10,
-                  background: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
                 }}
               >
+                <div>
+                  <p
+                    className="muted"
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    OVERALL PACING
+                  </p>
+                  <h2
+                    style={{
+                      margin: "8px 0 0",
+                      fontSize: 32,
+                      color: "#0f274f",
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: 8,
+                    }}
+                  >
+                    {avgWpm}
+                    <span
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 500,
+                        color: "#64748b",
+                      }}
+                    >
+                      WPM
+                    </span>
+                  </h2>
+                  <p
+                    className="muted"
+                    style={{ margin: "6px 0 0", fontSize: 13 }}
+                  >
+                    Average words per minute across the entire lecture audio.
+                  </p>
+                </div>
+
                 <div
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 9,
+                    width: 52,
+                    height: 52,
+                    borderRadius: 12,
+                    background: "#eef4fb",
+                    color: "#1f6feb",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "#eef4fb",
-                    color: "#173b6d",
+                    flexShrink: 0,
                   }}
                 >
-                  <Icon size={18} />
+                  <Clock size={26} />
                 </div>
+              </div>
+            </div>
+          </section>
 
-                <h3
+          {/* =====================================================
+              2. WPM BY SEGMENT (SEGMENT-LEVEL PACING)
+          ===================================================== */}
+          <section className="card" style={{ marginTop: 20, padding: 24 }}>
+            <p className="eyebrow">SEGMENT PACING</p>
+            <h2 style={{ marginTop: 5, fontSize: 19 }}>
+              Speaking Rate by Segment
+            </h2>
+            <p className="muted" style={{ marginTop: 5, fontSize: 12 }}>
+              Segment-level words per minute computed from audio timestamps.
+            </p>
+
+            {wpmSegments.length === 0 ? (
+              <div
+                style={{
+                  padding: "24px 0",
+                  textAlign: "center",
+                  color: "#64748b",
+                  fontSize: 13,
+                }}
+              >
+                No segment WPM data available.
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gap: 14,
+                  marginTop: 20,
+                }}
+              >
+                {wpmSegments.map((seg, idx) => {
+                  const width = Math.min(
+                    100,
+                    Math.max(5, (seg.wpm / maxSegmentWpm) * 100),
+                  );
+
+                  const startTime = formatSecondsToTime(seg.start || 0);
+                  const endTime = formatSecondsToTime(seg.end || 0);
+
+                  return (
+                    <div
+                      key={seg.segment_id || idx}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "110px 1fr 90px",
+                        gap: 14,
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#64748b",
+                          fontSize: 12,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {startTime} – {endTime}
+                      </span>
+
+                      <div
+                        style={{
+                          height: 10,
+                          borderRadius: 999,
+                          overflow: "hidden",
+                          background: "#e8edf4",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${width}%`,
+                            borderRadius: 999,
+                            background: "#1f6feb",
+                            transition: "width 0.4s ease",
+                          }}
+                        />
+                      </div>
+
+                      <strong
+                        style={{
+                          fontSize: 12,
+                          textAlign: "right",
+                          color: "#0f274f",
+                        }}
+                      >
+                        {Math.round(seg.wpm || 0)} WPM
+                      </strong>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* =====================================================
+              3. WORD FREQUENCY & FILLER WORDS (2-COLUMN GRID)
+          ===================================================== */}
+          <section
+            style={{
+              marginTop: 20,
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 18,
+            }}
+          >
+            {/* Word Frequency */}
+            <div className="card" style={{ padding: 24 }}>
+              <p className="eyebrow">VOCABULARY</p>
+              <h2 style={{ marginTop: 5, fontSize: 19 }}>
+                Top Repeated Words
+              </h2>
+
+              {wordFrequency.length === 0 ? (
+                <div
                   style={{
-                    marginTop: 14,
-                    marginBottom: 0,
-                    fontSize: 15,
+                    padding: "20px 0",
+                    color: "#64748b",
+                    fontSize: 13,
                   }}
                 >
-                  {material.title}
-                </h3>
+                  No word frequency data available.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 9, marginTop: 18 }}>
+                  {wordFrequency.slice(0, 10).map((item) => (
+                    <div
+                      key={item.word}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 13px",
+                        borderRadius: 8,
+                        background: "#f7f9fc",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          color: "#334155",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {item.word}
+                      </span>
+                      <strong style={{ fontSize: 12, color: "#1f6feb" }}>
+                        {item.count}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                <p
-                  className="muted"
+            {/* Filler Words */}
+            <div className="card" style={{ padding: 24 }}>
+              <p className="eyebrow">SPEECH PATTERNS</p>
+              <h2 style={{ marginTop: 5, fontSize: 19 }}>Filler Words</h2>
+
+              {fillerWordCounts.length === 0 ? (
+                <div
                   style={{
-                    marginTop: 6,
-                    fontSize: 11,
-                    lineHeight: 1.6,
+                    padding: "24px 0",
+                    textAlign: "center",
+                    color: "#64748b",
+                    fontSize: 13,
                   }}
                 >
-                  {material.description}
+                  <p style={{ margin: 0, fontWeight: 500 }}>
+                    No filler words detected
+                  </p>
+                  <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Speech delivery was clear of common filler phrases.
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 9, marginTop: 18 }}>
+                  {fillerWordCounts.map((item) => (
+                    <div
+                      key={item.word}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 13px",
+                        borderRadius: 8,
+                        background: "#f7f9fc",
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: "#475569" }}>
+                        “{item.word}”
+                      </span>
+                      <strong style={{ fontSize: 12, color: "#0f274f" }}>
+                        {item.count}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* =====================================================
+              4. GLOSSARY KEYWORD FREQUENCY
+          ===================================================== */}
+          <section
+            className="card"
+            style={{ marginTop: 20, padding: 24, marginBottom: 24 }}
+          >
+            <p className="eyebrow">KEYWORD METRICS</p>
+            <h2 style={{ marginTop: 5, fontSize: 19 }}>
+              Glossary Keyword Frequency
+            </h2>
+            <p className="muted" style={{ marginTop: 5, fontSize: 12 }}>
+              Frequency of generated glossary terms occurring in the lecture
+              transcript.
+            </p>
+
+            {keywordFrequency.length === 0 ? (
+              <div
+                style={{
+                  marginTop: 18,
+                  padding: "28px 20px",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  border: "1px dashed #cbd5e1",
+                  textAlign: "center",
+                }}
+              >
+                <Tag
+                  size={28}
+                  style={{ margin: "0 auto 8px", color: "#94a3b8" }}
+                />
+                <h4
+                  style={{
+                    margin: "0 0 4px",
+                    fontSize: 14,
+                    color: "#334155",
+                    fontWeight: 600,
+                  }}
+                >
+                  No glossary terms yet
+                </h4>
+                <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+                  Glossary keywords will appear here once glossary terms are
+                  generated for this lecture.
                 </p>
               </div>
-            );
-          })}
-        </div>
-      </section>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                  gap: 12,
+                  marginTop: 18,
+                }}
+              >
+                {keywordFrequency.map((item) => (
+                  <div
+                    key={item.word}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 15px",
+                      borderRadius: 9,
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 13,
+                        color: "#1e293b",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {item.word}
+                    </span>
+                    <span
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: 999,
+                        background: "#e0f2fe",
+                        color: "#0369a1",
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {item.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }
-
-export default FacultyAnalytics;

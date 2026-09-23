@@ -84,6 +84,11 @@ function AppRoutes() {
         <Route path="lectures/:lectureId" element={<FacultyLectureDetails />} />
 
         <Route
+          path="lectures/:lectureId/analytics"
+          element={<FacultyAnalytics />}
+        />
+
+        <Route
           path="lectures/:lectureId/doubts"
           element={<FacultyDoubtSession />}
         />
