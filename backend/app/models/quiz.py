@@ -6,6 +6,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.lecture import Lecture
+    from app.models.quiz_attempt import QuizAttempt
 
 
 class Quiz(Base):
@@ -25,3 +26,6 @@ class Quiz(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     lecture: Mapped["Lecture"] = relationship("Lecture", back_populates="quizzes")
+    attempts: Mapped[list["QuizAttempt"]] = relationship(
+        "QuizAttempt", back_populates="quiz", cascade="all, delete-orphan"
+    )

@@ -17,6 +17,7 @@ export default function StudentDashboard() {
 
   const [subjects, setSubjects] = useState([]);
   const [lectures, setLectures] = useState([]);
+  const [quizStats, setQuizStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -28,6 +29,12 @@ export default function StudentDashboard() {
     try {
       setLoading(true);
       setError(null);
+
+      // Fetch student quiz stats in parallel
+      apiClient
+        .get("/lectures/student/quiz-stats")
+        .then((res) => setQuizStats(res))
+        .catch(() => setQuizStats(null));
 
       // 1. Fetch enrolled subjects
       const subjectsRes = await apiClient.get("/subjects");
@@ -134,7 +141,7 @@ export default function StudentDashboard() {
   };
 
   const completedLectures = lectures.filter(
-    (l) => l.status === "Processed",
+    (l) => l.status === "broadcast" || l.status === "Processed" || l.status === "processed",
   ).length;
   const totalLectures = lectures.length;
 
@@ -364,13 +371,22 @@ export default function StudentDashboard() {
             style={{
               display: "block",
               marginTop: 9,
-              color: "#68778d",
+              color:
+                quizStats?.average_score !== null &&
+                quizStats?.average_score !== undefined
+                  ? "#0f274f"
+                  : "#68778d",
               fontSize: 28,
               lineHeight: 1,
               fontWeight: 700,
             }}
           >
-            N/A
+            {loading
+              ? "..."
+              : quizStats?.average_score !== null &&
+                quizStats?.average_score !== undefined
+              ? `${Math.round(quizStats.average_score)}%`
+              : "N/A"}
           </strong>
         </div>
       </section>

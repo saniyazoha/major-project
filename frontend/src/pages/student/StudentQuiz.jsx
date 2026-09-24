@@ -20,6 +20,8 @@ export default function StudentQuiz() {
   const [time, setTime] = useState(15 * 60);
   const [finished, setFinished] = useState(false);
 
+  const [attemptedMap, setAttemptedMap] = useState({});
+
   const parseOptions = (options_json) => {
     if (!options_json) return [];
     if (Array.isArray(options_json)) return options_json;
@@ -52,9 +54,10 @@ export default function StudentQuiz() {
       setError(null);
       setErrorStatus(null);
 
-      const [lecData, quizData] = await Promise.all([
+      const [lecData, quizData, attemptsData] = await Promise.all([
         apiClient.get(`/lectures/${lectureId}`).catch(() => null),
         apiClient.get(`/lectures/${lectureId}/quizzes`),
+        apiClient.get(`/lectures/${lectureId}/quizzes/attempts`).catch(() => []),
       ]);
 
       if (lecData?.title) {
@@ -62,10 +65,20 @@ export default function StudentQuiz() {
       }
 
       const list = Array.isArray(quizData) ? quizData : quizData?.data || [];
+      const attList = Array.isArray(attemptsData) ? attemptsData : attemptsData?.data || [];
+
+      const attMap = {};
+      let initialScore = 0;
+      attList.forEach((att) => {
+        attMap[att.quiz_id] = att;
+        if (att.score === 1) initialScore += 1;
+      });
+
+      setAttemptedMap(attMap);
       setQuizQuestions(list);
       setCurrent(0);
       setSelected(null);
-      setScore(0);
+      setScore(initialScore);
       setFinished(false);
       setTime(15 * 60);
     } catch (err) {
@@ -114,12 +127,49 @@ export default function StudentQuiz() {
     )}`;
   };
 
-  const registerCurrentAnswer = () => {
+  const registerCurrentAnswer = async () => {
     const currentQ = quizQuestions[current];
-    if (!currentQ) return;
+    if (!currentQ || selected === null || selected === undefined) return;
+
     const opts = parseOptions(currentQ.options_json);
-    if (checkAnswer(currentQ, selected, opts)) {
-      setScore((previous) => previous + 1);
+    const selectedText = opts[selected];
+    if (!selectedText) return;
+
+    if (attemptedMap[currentQ.id]) return;
+
+    // Optimistic duplicate prevention
+    setAttemptedMap((prev) => ({
+      ...prev,
+      [currentQ.id]: { selected_answer: selectedText, score: 0 },
+    }));
+
+    try {
+      const res = await apiClient.post(
+        `/lectures/${lectureId}/quizzes/${currentQ.id}/attempt`,
+        { selected_answer: selectedText }
+      );
+      const resScore = res?.score ?? (checkAnswer(currentQ, selected, opts) ? 1 : 0);
+      setAttemptedMap((prev) => ({
+        ...prev,
+        [currentQ.id]: { selected_answer: selectedText, score: resScore },
+      }));
+      if (resScore === 1) {
+        setScore((prev) => prev + 1);
+      }
+    } catch (err) {
+      if (err?.status === 409) {
+        const resScore = checkAnswer(currentQ, selected, opts) ? 1 : 0;
+        setAttemptedMap((prev) => ({
+          ...prev,
+          [currentQ.id]: { selected_answer: selectedText, score: resScore },
+        }));
+      } else {
+        setAttemptedMap((prev) => {
+          const next = { ...prev };
+          delete next[currentQ.id];
+          return next;
+        });
+      }
     }
   };
 
@@ -397,6 +447,20 @@ export default function StudentQuiz() {
   const options = parseOptions(question?.options_json);
   const progress = ((current + 1) / quizQuestions.length) * 100;
 
+  const currentAttempt = question ? attemptedMap[question.id] : null;
+  const isAttempted = !!currentAttempt;
+
+  let recordedIndex = -1;
+  if (currentAttempt && currentAttempt.selected_answer && options.length > 0) {
+    recordedIndex = options.findIndex(
+      (opt) => String(opt).trim() === String(currentAttempt.selected_answer).trim()
+    );
+  }
+
+  const effectiveSelected = isAttempted
+    ? (recordedIndex >= 0 ? recordedIndex : selected)
+    : selected;
+
   return (
     <div
       className="page student-page"
@@ -566,18 +630,45 @@ export default function StudentQuiz() {
             borderRadius: 15,
           }}
         >
-          <p
+          <div
             style={{
-              margin: 0,
-              color: "#52647d",
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
             }}
           >
-            Question {current + 1}
-          </p>
+            <p
+              style={{
+                margin: 0,
+                color: "#52647d",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Question {current + 1}
+            </p>
+
+            {isAttempted && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: "#e8f3ed",
+                  color: "#087044",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                ✓ Already Attempted (Review Mode)
+              </span>
+            )}
+          </div>
 
           <h2
             style={{
@@ -597,42 +688,50 @@ export default function StudentQuiz() {
               marginTop: 22,
             }}
           >
-            {options.map((option, index) => (
-              <button
-                key={`${option}-${index}`}
-                type="button"
-                onClick={() => setSelected(index)}
-                style={{
-                  width: "100%",
-                  minHeight: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "11px 14px",
-                  border:
-                    selected === index
+            {options.map((option, index) => {
+              const isSelected = effectiveSelected === index;
+              return (
+                <button
+                  key={`${option}-${index}`}
+                  type="button"
+                  onClick={() => {
+                    if (!isAttempted) {
+                      setSelected(index);
+                    }
+                  }}
+                  disabled={isAttempted}
+                  style={{
+                    width: "100%",
+                    minHeight: 48,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "11px 14px",
+                    border: isSelected
                       ? "1px solid #84aee0"
                       : "1px solid #dce1e8",
-                  borderRadius: 9,
-                  background: selected === index ? "#dce9fb" : "#ffffff",
-                  color: "#475569",
-                  fontSize: 14,
-                  textAlign: "left",
-                  cursor: "pointer",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 17,
-                    color: "#173b6d",
+                    borderRadius: 9,
+                    background: isSelected ? "#dce9fb" : "#ffffff",
+                    color: isAttempted && isSelected ? "#0f274f" : "#475569",
+                    fontSize: 14,
+                    textAlign: "left",
+                    cursor: isAttempted ? "default" : "pointer",
+                    opacity: isAttempted && !isSelected ? 0.75 : 1,
                   }}
                 >
-                  {selected === index ? "●" : "○"}
-                </span>
+                  <span
+                    style={{
+                      fontSize: 17,
+                      color: "#173b6d",
+                    }}
+                  >
+                    {isSelected ? "●" : "○"}
+                  </span>
 
-                {option}
-              </button>
-            ))}
+                  {option}
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
@@ -678,7 +777,7 @@ export default function StudentQuiz() {
           <button
             type="button"
             onClick={nextQuestion}
-            disabled={selected === null}
+            disabled={!isAttempted && selected === null}
             style={{
               minHeight: 42,
               padding: "9px 20px",
@@ -688,8 +787,8 @@ export default function StudentQuiz() {
               color: "#ffffff",
               fontSize: 14,
               fontWeight: 600,
-              cursor: selected === null ? "not-allowed" : "pointer",
-              opacity: selected === null ? 0.55 : 1,
+              cursor: !isAttempted && selected === null ? "not-allowed" : "pointer",
+              opacity: !isAttempted && selected === null ? 0.55 : 1,
             }}
           >
             {current === quizQuestions.length - 1 ? "Finish" : "Next"}

@@ -17,6 +17,7 @@ import FacultySubjects from "../pages/faculty/FacultySubjects";
 import FacultySubjectDetails from "../pages/faculty/FacultySubjectDetails";
 import FacultyLectureDetails from "../pages/faculty/FacultyLectureDetails";
 import FacultyAnalytics from "../pages/faculty/FacultyAnalytics";
+import FacultyQuizPerformance from "../pages/faculty/FacultyQuizPerformance";
 import FacultySettings from "../pages/faculty/FacultySettings";
 import FacultyDoubtSession from "../pages/faculty/FacultyDoubtSession";
 import FacultyDoubtDetails from "../pages/faculty/FacultyDoubtDetails";
@@ -89,6 +90,11 @@ function AppRoutes() {
         />
 
         <Route
+          path="lectures/:lectureId/quiz-performance"
+          element={<FacultyQuizPerformance />}
+        />
+
+        <Route
           path="lectures/:lectureId/doubts"
           element={<FacultyDoubtSession />}
         />
@@ -111,6 +117,11 @@ function AppRoutes() {
         <Route
           path="subjects/:subjectId/lecturers/:lecturerId/lectures/:lectureId/analytics"
           element={<FacultyAnalytics />}
+        />
+
+        <Route
+          path="subjects/:subjectId/lecturers/:lecturerId/lectures/:lectureId/quiz-performance"
+          element={<FacultyQuizPerformance />}
         />
 
         <Route

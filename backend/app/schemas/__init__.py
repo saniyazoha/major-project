@@ -17,6 +17,14 @@ from app.schemas.generation import (
     GlossaryResponse,
 )
 from app.schemas.analytics import LectureAnalyticsResponse
+from app.schemas.quiz_attempt import (
+    QuizAttemptCreate,
+    QuizAttemptResponse,
+    StudentQuizResult,
+    FacultyQuizPerformanceResponse,
+    MostMissedQuestion,
+    StudentQuizStatsResponse,
+)
 
 __all__ = [
     "LoginRequest",
@@ -36,4 +44,10 @@ __all__ = [
     "QuizResponse",
     "GlossaryResponse",
     "LectureAnalyticsResponse",
+    "QuizAttemptCreate",
+    "QuizAttemptResponse",
+    "StudentQuizResult",
+    "FacultyQuizPerformanceResponse",
+    "MostMissedQuestion",
+    "StudentQuizStatsResponse",
 ]

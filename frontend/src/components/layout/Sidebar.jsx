@@ -4,6 +4,7 @@ import {
   Upload,
   BookOpen,
   TrendingUp,
+  Users,
   Settings,
 } from "lucide-react";
 
@@ -28,6 +29,11 @@ function Sidebar({ role }) {
           label: "Subjects",
           path: "/faculty/subjects",
           icon: BookOpen,
+        },
+        {
+          label: "Student Progress",
+          path: "/faculty/student-progress",
+          icon: Users,
         },
         {
           label: "Settings",

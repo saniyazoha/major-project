@@ -11,6 +11,7 @@ from app.models.flashcard import Flashcard
 from app.models.quiz import Quiz
 from app.models.glossary import Glossary
 from app.models.lecture_analytics import LectureAnalytics
+from app.models.quiz_attempt import QuizAttempt
 
 __all__ = [
     "Base",
@@ -26,4 +27,5 @@ __all__ = [
     "Quiz",
     "Glossary",
     "LectureAnalytics",
+    "QuizAttempt",
 ]

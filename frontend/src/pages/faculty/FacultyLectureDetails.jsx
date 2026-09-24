@@ -739,10 +739,6 @@ function FacultyLectureDetails() {
     navigate("/faculty/subjects");
   };
 
-  const handleStudentProgress = () => {
-    navigate("/faculty/student-progress");
-  };
-
   /* =====================================================
      TRANSCRIPT ACTIONS & API INTEGRATION
   ===================================================== */
@@ -2424,7 +2420,19 @@ function FacultyLectureDetails() {
 
         <button
           type="button"
-          onClick={handleStudentProgress}
+          onClick={() => {
+            const targetLecId = lectureId || lecture?.id;
+            if (subjectId && lecturerId && targetLecId) {
+              navigate(
+                `/faculty/subjects/${subjectId}/lecturers/${lecturerId}/lectures/${targetLecId}/quiz-performance`
+              );
+              return;
+            }
+            if (targetLecId) {
+              navigate(`/faculty/lectures/${targetLecId}/quiz-performance`);
+              return;
+            }
+          }}
           style={{
             minHeight: 44,
             border: "none",
@@ -2443,8 +2451,8 @@ function FacultyLectureDetails() {
             borderRadius: 0,
           }}
         >
-          <Users size={16} />
-          Student Progress
+          <BarChart3 size={16} />
+          Quiz Performance
         </button>
 
         <button
