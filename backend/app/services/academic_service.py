@@ -123,3 +123,8 @@ def get_students_in_batch(
         .all()
     )
     return students, None
+
+
+def get_student_by_rollno(db: Session, rollno: str) -> Student | None:
+    """Look up an existing student by roll number / USN."""
+    return db.query(Student).filter(Student.rollno == rollno).first()

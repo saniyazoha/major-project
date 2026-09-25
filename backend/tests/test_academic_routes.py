@@ -290,3 +290,45 @@ def test_missing_invalid_expired_jwt(academic_setup):
     r3 = client.get("/subjects", headers={"Authorization": f"Bearer {expired_token}"})
     assert r3.status_code == 401
     assert r3.json()["detail"] == "Invalid or expired token"
+
+
+def test_faculty_student_lookup_success(academic_setup):
+    """Faculty can successfully look up an existing student by roll number / USN."""
+    client = academic_setup["client"]
+    fac1_token = academic_setup["fac1_token"]
+    stu1 = academic_setup["stu1"]
+
+    res = client.get("/students/lookup?rollno=CS101", headers={"Authorization": f"Bearer {fac1_token}"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["id"] == stu1.id
+    assert data["name"] == "Ada Lovelace"
+    assert data["rollno"] == "CS101"
+    assert data["username"] == "ada"
+
+
+def test_faculty_student_lookup_not_found(academic_setup):
+    """Faculty lookup for non-existent roll number returns 404."""
+    client = academic_setup["client"]
+    fac1_token = academic_setup["fac1_token"]
+
+    res = client.get("/students/lookup?rollno=UNKNOWN999", headers={"Authorization": f"Bearer {fac1_token}"})
+    assert res.status_code == 404
+    assert res.json()["detail"] == "Student not found"
+
+
+def test_student_cannot_access_student_lookup(academic_setup):
+    """Student is forbidden from calling student lookup endpoint."""
+    client = academic_setup["client"]
+    stu1_token = academic_setup["stu1_token"]
+
+    res = client.get("/students/lookup?rollno=CS101", headers={"Authorization": f"Bearer {stu1_token}"})
+    assert res.status_code == 403
+
+
+def test_student_lookup_unauthenticated(academic_setup):
+    """Unauthenticated call to student lookup returns 401."""
+    client = academic_setup["client"]
+
+    res = client.get("/students/lookup?rollno=CS101")
+    assert res.status_code == 401
