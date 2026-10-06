@@ -1,60 +1,116 @@
-import { ArrowLeft, Send } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, Send, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { lectures } from "../../data/lectures";
-import { users } from "../../data/users";
-import { getDoubtsByLecture, updateDoubt } from "../../data/doubtsData";
-import { useAuthContext } from "../../context/AuthContext";
+import { apiClient } from "../../api/client";
 
 export default function FacultyDoubtDetails() {
   const navigate = useNavigate();
   const { lectureId, doubtId } = useParams();
-  const { user } = useAuthContext();
-  const storedUsername = localStorage.getItem("username");
-  const currentUser =
-    user || users.find((item) => item.username === storedUsername) || null;
 
-  const lecture = useMemo(
-    () => lectures.find((item) => String(item.id) === String(lectureId)),
-    [lectureId],
-  );
-  const doubt = lecture
-    ? getDoubtsByLecture(lecture.id).find(
-        (item) => String(item.id) === String(doubtId),
-      )
-    : null;
+  const [lecture, setLecture] = useState(null);
+  const [doubt, setDoubt] = useState(null);
   const [reply, setReply] = useState("");
-  const [savedDoubt, setSavedDoubt] = useState(doubt);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [errorStatus, setErrorStatus] = useState(null);
 
-  const sendReply = () => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
+
+      const [lecData, doubtData] = await Promise.all([
+        apiClient.get(`/lectures/${lectureId}`),
+        apiClient.get(`/doubts/${doubtId}`),
+      ]);
+
+      setLecture(lecData);
+      setDoubt(doubtData);
+    } catch (err) {
+      console.error("Failed to load faculty doubt details:", err);
+      setErrorStatus(err?.status || 500);
+      setError(err?.message || "Failed to load doubt details.");
+      setLecture(null);
+      setDoubt(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (lectureId && doubtId) {
+      fetchData();
+    }
+  }, [lectureId, doubtId]);
+
+  const sendReply = async () => {
     const cleanedReply = reply.trim();
 
-    if (!savedDoubt || !cleanedReply) {
+    if (!doubt || !cleanedReply || submitting) {
       return;
     }
 
-    const updatedDoubt = updateDoubt(savedDoubt.id, {
-      status: "answered",
-      answer: cleanedReply,
-      answeredBy:
-        currentUser?.name ||
-        currentUser?.username ||
-        storedUsername ||
-        "Faculty",
-      answeredAt: new Date().toLocaleString(),
-      studentUnread: true,
-    });
+    setSubmitting(true);
+    try {
+      const updatedDoubt = await apiClient.patch(`/doubts/${doubtId}/answer`, {
+        answer: cleanedReply,
+      });
 
-    setSavedDoubt(updatedDoubt);
-    setReply("");
+      setDoubt(updatedDoubt);
+      setReply("");
+    } catch (err) {
+      console.error("Failed to submit doubt answer:", err);
+      alert(err?.message || "Failed to submit answer.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (!lecture || !savedDoubt) {
+  const formatDate = (isoString) => {
+    if (!isoString) return "";
+    try {
+      return new Date(isoString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  if (loading) {
     return (
       <div className="page">
-        <div className="card" style={{ padding: 30 }}>
-          <h2>Doubt not found</h2>
+        <div className="card" style={{ padding: 30, textAlign: "center" }}>
+          <RefreshCw size={28} className="animate-spin" style={{ margin: "0 auto 12px" }} />
+          <p style={{ margin: 0, color: "#667085" }}>Loading doubt details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorStatus === 403 || errorStatus === 404 || !lecture || !doubt) {
+    return (
+      <div className="page">
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate(`/faculty/lectures/${lectureId}/doubts`)}
+        >
+          <ArrowLeft size={16} />
+          Back to Doubt Session
+        </button>
+        <div className="card" style={{ marginTop: 20, padding: 30 }}>
+          <h2>{errorStatus === 403 ? "Access Denied" : "Doubt Not Found"}</h2>
+          <p style={{ marginTop: 8, color: "#667085" }}>
+            {error || "The requested doubt details could not be found."}
+          </p>
         </div>
       </div>
     );
@@ -90,20 +146,20 @@ export default function FacultyDoubtDetails() {
           <div>
             <p className="eyebrow">STUDENT</p>
             <h3 style={{ margin: "4px 0 0" }}>
-              {savedDoubt.studentName || "Student"}
+              {doubt.studentName || (doubt.student_id ? `Student #${doubt.student_id}` : "Student")}
             </h3>
             <p className="muted" style={{ margin: "5px 0 0", fontSize: 12 }}>
-              USN: {savedDoubt.usn || "Not available"}
+              USN: {doubt.usn || (doubt.student_id ? `STU-${doubt.student_id}` : "Not available")}
             </p>
           </div>
           <div style={{ color: "#667085", fontSize: 12 }}>
             <strong style={{ color: "#344054" }}>Status:</strong>{" "}
             <span style={{ textTransform: "capitalize" }}>
-              {savedDoubt.status || "pending"}
+              {doubt.status || "pending"}
             </span>
             <br />
             <strong style={{ color: "#344054" }}>Submitted:</strong>{" "}
-            {savedDoubt.createdAt}
+            {formatDate(doubt.created_at)}
           </div>
         </div>
 
@@ -116,7 +172,7 @@ export default function FacultyDoubtDetails() {
         >
           <p className="eyebrow">QUESTION</p>
           <p style={{ margin: "8px 0 0", color: "#344054", lineHeight: 1.7 }}>
-            {savedDoubt.question}
+            {doubt.question}
           </p>
         </div>
       </section>
@@ -134,10 +190,10 @@ export default function FacultyDoubtDetails() {
             lineHeight: 1.7,
           }}
         >
-          {savedDoubt.question}
+          {doubt.question}
         </div>
 
-        {savedDoubt.answer && (
+        {doubt.answer && (
           <div
             style={{
               maxWidth: "76%",
@@ -150,9 +206,10 @@ export default function FacultyDoubtDetails() {
               lineHeight: 1.7,
             }}
           >
-            {savedDoubt.answer}
+            {doubt.answer}
             <small style={{ display: "block", marginTop: 8, opacity: 0.8 }}>
-              {savedDoubt.answeredBy} • {savedDoubt.answeredAt}
+              {doubt.answered_by ? `Faculty #${doubt.answered_by}` : "Faculty"}
+              {doubt.answered_at ? ` • ${formatDate(doubt.answered_at)}` : ""}
             </small>
           </div>
         )}
@@ -170,13 +227,18 @@ export default function FacultyDoubtDetails() {
           <input
             type="text"
             value={reply}
+            disabled={submitting || doubt.status === "answered"}
             onChange={(event) => setReply(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 sendReply();
               }
             }}
-            placeholder="Write a reply..."
+            placeholder={
+              doubt.status === "answered"
+                ? "This doubt has already been answered."
+                : "Write a reply..."
+            }
             style={{
               flex: 1,
               minHeight: 44,
@@ -193,10 +255,10 @@ export default function FacultyDoubtDetails() {
             type="button"
             className="primary-action-button"
             onClick={sendReply}
-            disabled={!reply.trim()}
+            disabled={!reply.trim() || submitting || doubt.status === "answered"}
           >
             <Send size={15} />
-            Send
+            {submitting ? "Sending..." : "Send"}
           </button>
         </div>
       </section>

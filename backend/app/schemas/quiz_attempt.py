@@ -46,3 +46,12 @@ class StudentQuizStatsResponse(BaseModel):
     student_id: int
     average_score: Optional[float] = None
     total_attempts: int
+
+
+class FacultyStudentProgressItem(BaseModel):
+    student_id: int
+    name: str
+    rollno: str
+    batch_name: str
+    avg_score: Optional[float] = None
+    quizzes_attempted: int

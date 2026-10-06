@@ -1,95 +1,58 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
-  CheckCircle2,
   ClipboardCheck,
-  Layers3,
-  ChevronRight,
+  ClipboardList,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
-
-import { lectures } from "../../data/lectures";
+import { apiClient } from "../../api/client";
 
 function StudentProgress() {
   const navigate = useNavigate();
 
-  const totalLectures = lectures.length;
+  const [quizStats, setQuizStats] = useState(null);
+  const [lecturesCount, setLecturesCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const completedLectures = lectures.filter(
-    (lecture) => lecture.completed === true,
-  ).length;
+  const fetchProgressData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const progress =
-    totalLectures > 0
-      ? Math.round((completedLectures / totalLectures) * 100)
-      : 0;
+      // 1. Fetch quiz stats for current student
+      const quizRes = await apiClient.get("/students/quiz-stats");
+      setQuizStats(quizRes);
 
-  /*
-   * Subject-wise progress
-   *
-   * This is calculated from the current lecture data.
-   * Later, when backend progress is connected, this section
-   * can use real student completion data.
-   */
-  const subjectProgress = useMemo(() => {
-    const grouped = {};
+      // 2. Fetch enrollment-scoped lectures for current student
+      const lecturesRes = await apiClient.get("/lectures");
+      const list = Array.isArray(lecturesRes) ? lecturesRes : lecturesRes?.data || [];
+      setLecturesCount(list.length);
+    } catch (err) {
+      console.error("Failed to load student progress data:", err);
+      setError(err?.message || "Failed to load study progress.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    lectures.forEach((lecture) => {
-      const subject = lecture.subject || "Unknown Subject";
-
-      if (!grouped[subject]) {
-        grouped[subject] = {
-          subject,
-          total: 0,
-          completed: 0,
-        };
-      }
-
-      grouped[subject].total += 1;
-
-      if (lecture.completed === true) {
-        grouped[subject].completed += 1;
-      }
-    });
-
-    return Object.values(grouped).map((item) => ({
-      ...item,
-      percentage:
-        item.total > 0 ? Math.round((item.completed / item.total) * 100) : 0,
-    }));
+  useEffect(() => {
+    fetchProgressData();
   }, []);
 
-  /*
-   * Placeholder values until quiz / flashcard activity
-   * is connected to the backend.
-   */
-  const quizScore = 88;
-  const flashcardsMastered = 450;
+  const avgScoreText =
+    quizStats?.average_score !== null && quizStats?.average_score !== undefined
+      ? `${Math.round(quizStats.average_score)}%`
+      : "N/A";
 
-  /*
-   * Generate a simple activity grid.
-   * Later this can be replaced with actual daily activity.
-   */
-  const activityCells = Array.from({ length: 84 }, (_, index) => {
-    const value = (index * 7 + 3) % 5;
-
-    return {
-      id: index,
-      level: value,
-    };
-  });
-
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const progressOffset = circumference - (progress / 100) * circumference;
+  const totalAttempts = quizStats?.total_attempts ?? 0;
 
   return (
     <div className="page student-page student-progress-page">
-      {/* =========================================
-          HEADER
-      ========================================= */}
-
+      {/* HEADER */}
       <div className="page-header">
         <div>
           <p className="eyebrow">ACADEMIC ANALYTICS</p>
@@ -97,7 +60,7 @@ function StudentProgress() {
           <h1>Study Progress</h1>
 
           <p className="muted">
-            Track your academic performance and lecture completion.
+            Track your academic quiz performance and available course materials.
           </p>
         </div>
 
@@ -110,204 +73,87 @@ function StudentProgress() {
         </button>
       </div>
 
-      {/* =========================================
-          MAIN PROGRESS AREA
-      ========================================= */}
-
-      <section className="student-progress-overview">
-        {/* OVERALL PROGRESS */}
-
-        <div className="card student-overall-progress-card">
-          <div className="student-progress-card-title">
-            <h3>Overall Progress</h3>
-          </div>
-
-          <div className="student-progress-circle-wrapper">
-            <svg
-              className="student-progress-circle"
-              width="150"
-              height="150"
-              viewBox="0 0 150 150"
-            >
-              <circle
-                cx="75"
-                cy="75"
-                r={radius}
-                fill="none"
-                stroke="#e5e7eb"
-                strokeWidth="10"
-              />
-
-              <circle
-                cx="75"
-                cy="75"
-                r={radius}
-                fill="none"
-                stroke="#0879b9"
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={progressOffset}
-                transform="rotate(-90 75 75)"
-              />
-            </svg>
-
-            <div className="student-progress-circle-content">
-              <strong>{progress}%</strong>
-              <span>COMPLETED</span>
-            </div>
-          </div>
-
-          <div className="student-progress-overall-stats">
-            <div>
-              <strong>{totalLectures}</strong>
-              <span>LECTURES</span>
+      {loading ? (
+        <div
+          className="card"
+          style={{
+            padding: 40,
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+            marginTop: 20,
+          }}
+        >
+          <RefreshCw size={28} className="animate-spin" style={{ color: "#1f6feb" }} />
+          <p style={{ margin: 0, color: "#68778d" }}>Loading study progress...</p>
+        </div>
+      ) : error ? (
+        <div
+          className="card"
+          style={{
+            padding: 32,
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+            marginTop: 20,
+          }}
+        >
+          <AlertCircle size={32} style={{ color: "#e11d48" }} />
+          <p style={{ margin: 0, color: "#68778d" }}>{error}</p>
+          <button
+            type="button"
+            className="secondary-action-button"
+            onClick={fetchProgressData}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
+        </div>
+      ) : (
+        <section className="student-progress-statistics" style={{ marginTop: 24 }}>
+          {/* Broadcast Lectures Available */}
+          <div className="card student-progress-stat">
+            <div className="student-progress-stat-icon">
+              <BookOpen size={19} />
             </div>
 
             <div>
-              <strong>8.5h</strong>
-              <span>STUDIED</span>
+              <span>BROADCAST LECTURES AVAILABLE</span>
+
+              <strong>{lecturesCount}</strong>
             </div>
           </div>
-        </div>
 
-        {/* SUBJECT PROGRESS */}
+          {/* Quiz Score */}
+          <div className="card student-progress-stat">
+            <div className="student-progress-stat-icon">
+              <ClipboardCheck size={19} />
+            </div>
 
-        <div className="card student-subject-progress-card">
-          <div className="student-progress-card-heading">
-            <h3>Subject Progress</h3>
+            <div>
+              <span>AVG. QUIZ SCORE</span>
 
-            <button
-              className="student-progress-details-button"
-              onClick={() => navigate("/student/subjects")}
-            >
-              View Details
-              <ChevronRight size={13} />
-            </button>
+              <strong>{avgScoreText}</strong>
+            </div>
           </div>
 
-          <div className="student-subject-progress-list">
-            {subjectProgress.length === 0 ? (
-              <div className="student-progress-no-data">
-                <BookOpen size={22} />
-                <p>No subject progress available.</p>
-              </div>
-            ) : (
-              subjectProgress.map((subject) => (
-                <div
-                  className="student-subject-progress-item"
-                  key={subject.subject}
-                >
-                  <div className="student-subject-progress-item-top">
-                    <div>
-                      <strong>{subject.subject}</strong>
+          {/* Quizzes Attempted */}
+          <div className="card student-progress-stat">
+            <div className="student-progress-stat-icon">
+              <ClipboardList size={19} />
+            </div>
 
-                      <span>
-                        {subject.completed}/{subject.total} Lectures
-                      </span>
-                    </div>
+            <div>
+              <span>QUIZZES ATTEMPTED</span>
 
-                    <b>{subject.percentage}%</b>
-                  </div>
-
-                  <div className="student-subject-progress-track">
-                    <div
-                      className="student-subject-progress-value"
-                      style={{
-                        width: `${subject.percentage}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
+              <strong>{totalAttempts}</strong>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* =========================================
-          STATISTICS
-      ========================================= */}
-
-      <section className="student-progress-statistics">
-        {/* Lectures */}
-
-        <div className="card student-progress-stat">
-          <div className="student-progress-stat-icon">
-            <CheckCircle2 size={19} />
-          </div>
-
-          <div>
-            <span>LECTURES COMPLETED</span>
-
-            <strong>
-              {completedLectures}
-              <small>/ {totalLectures}</small>
-            </strong>
-          </div>
-        </div>
-
-        {/* Quiz */}
-
-        <div className="card student-progress-stat">
-          <div className="student-progress-stat-icon">
-            <ClipboardCheck size={19} />
-          </div>
-
-          <div>
-            <span>AVG. QUIZ SCORE</span>
-
-            <strong>{quizScore}%</strong>
-          </div>
-        </div>
-
-        {/* Flashcards */}
-
-        <div className="card student-progress-stat">
-          <div className="student-progress-stat-icon">
-            <Layers3 size={19} />
-          </div>
-
-          <div>
-            <span>FLASHCARDS MASTERED</span>
-
-            <strong>{flashcardsMastered}</strong>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================
-          STUDY ACTIVITY
-      ========================================= */}
-
-      <section className="card student-study-activity">
-        <div className="student-study-activity-header">
-          <div>
-            <h3>Study Activity</h3>
-          </div>
-
-          <div className="student-study-activity-legend">
-            <span>Less</span>
-
-            <i className="activity-level level-0" />
-            <i className="activity-level level-1" />
-            <i className="activity-level level-2" />
-            <i className="activity-level level-3" />
-            <i className="activity-level level-4" />
-
-            <span>More</span>
-          </div>
-        </div>
-
-        <div className="student-study-activity-grid">
-          {activityCells.map((cell) => (
-            <div
-              key={cell.id}
-              className={`activity-cell level-${cell.level}`}
-            />
-          ))}
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

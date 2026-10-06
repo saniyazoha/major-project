@@ -13,6 +13,8 @@ class Faculty(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     username: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+
 
     subjects: Mapped[List["Subject"]] = relationship("Subject", back_populates="faculty", cascade="all, delete-orphan")

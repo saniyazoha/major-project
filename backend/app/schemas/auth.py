@@ -23,3 +23,23 @@ class TokenResponse(BaseModel):
     user_id: int
     name: str
     username: str
+    email: str | None = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=1)
+
+
+class UserProfileResponse(BaseModel):
+    id: int
+    name: str
+    username: str
+    role: str
+    email: str | None = None
+    rollno: str | None = None

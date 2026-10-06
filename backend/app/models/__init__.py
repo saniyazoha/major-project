@@ -12,6 +12,7 @@ from app.models.quiz import Quiz
 from app.models.glossary import Glossary
 from app.models.lecture_analytics import LectureAnalytics
 from app.models.quiz_attempt import QuizAttempt
+from app.models.doubt import Doubt
 
 __all__ = [
     "Base",
@@ -28,4 +29,5 @@ __all__ = [
     "Glossary",
     "LectureAnalytics",
     "QuizAttempt",
+    "Doubt",
 ]

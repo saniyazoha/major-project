@@ -43,3 +43,11 @@ class GlossaryResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AskAIRequest(BaseModel):
+    question: str
+
+
+class AskAIResponse(BaseModel):
+    answer: str

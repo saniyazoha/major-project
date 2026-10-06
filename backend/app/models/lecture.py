@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.models.quiz import Quiz
     from app.models.glossary import Glossary
     from app.models.lecture_analytics import LectureAnalytics
+    from app.models.doubt import Doubt
 
 
 class Lecture(Base):
@@ -52,4 +53,7 @@ class Lecture(Base):
     )
     analytics: Mapped[Optional["LectureAnalytics"]] = relationship(
         "LectureAnalytics", uselist=False, back_populates="lecture", cascade="all, delete-orphan"
+    )
+    doubts: Mapped[List["Doubt"]] = relationship(
+        "Doubt", back_populates="lecture", cascade="all, delete-orphan"
     )

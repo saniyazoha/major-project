@@ -32,7 +32,7 @@ export default function StudentDashboard() {
 
       // Fetch student quiz stats in parallel
       apiClient
-        .get("/lectures/student/quiz-stats")
+        .get("/students/quiz-stats")
         .then((res) => setQuizStats(res))
         .catch(() => setQuizStats(null));
 

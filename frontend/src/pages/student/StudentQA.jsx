@@ -1,196 +1,76 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { RefreshCw } from "lucide-react";
 
-import { lectures, lectureData } from "../../data/lectures";
-import { users } from "../../data/users";
-
-import {
-  addDoubt,
-  getDoubtsByLecture,
-  updateDoubt,
-} from "../../data/doubtsData";
-import { useAuthContext } from "../../context/AuthContext";
-
-const ignoredQuestionWords = new Set([
-  "about",
-  "does",
-  "from",
-  "how",
-  "that",
-  "the",
-  "this",
-  "what",
-  "when",
-  "where",
-  "which",
-  "who",
-  "why",
-  "with",
-]);
-
-function questionKeywords(question) {
-  return String(question)
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((word) => word.length > 2 && !ignoredQuestionWords.has(word));
-}
-
-function getLectureGroundedAnswer(question, selectedLectureData) {
-  const keywords = questionKeywords(question);
-  const sources = [];
-  const transcript =
-    selectedLectureData?.publishedTranscript ||
-    selectedLectureData?.transcript ||
-    [];
-  const notes =
-    selectedLectureData?.publishedNotes ||
-    selectedLectureData?.notes ||
-    selectedLectureData?.summary ||
-    [];
-  const flashcards =
-    selectedLectureData?.publishedFlashcards ||
-    selectedLectureData?.flashcards ||
-    [];
-  const quiz =
-    selectedLectureData?.publishedQuiz || selectedLectureData?.quiz || [];
-
-  transcript.forEach((item) => {
-    sources.push({
-      text: item.text,
-      searchableText: item.text,
-    });
-  });
-
-  notes.forEach((item) => {
-    const text = typeof item === "string" ? item : item.description;
-
-    if (text) {
-      sources.push({
-        text,
-        searchableText: text,
-      });
-    }
-  });
-
-  flashcards.forEach((item) => {
-    sources.push({
-      text: item.answer,
-      searchableText: `${item.question} ${item.answer}`,
-    });
-  });
-
-  quiz.forEach((item) => {
-    const correctOption = item.options?.[item.answer];
-
-    sources.push({
-      text: correctOption
-        ? `${item.question} Answer: ${correctOption}`
-        : item.question,
-      searchableText: `${item.question} ${item.options?.join(" ") || ""}`,
-    });
-  });
-
-  const matches = sources
-    .map((source, index) => {
-      const sourceWords = new Set(questionKeywords(source.searchableText));
-      const score = keywords.reduce(
-        (total, keyword) => total + (sourceWords.has(keyword) ? 1 : 0),
-        0,
-      );
-
-      return { ...source, score, index };
-    })
-    .filter((source) => source.score > 0)
-    .sort(
-      (first, second) =>
-        second.score - first.score || first.index - second.index,
-    );
-
-  if (matches.length === 0) {
-    return {
-      text: "This lecture does not contain enough information to answer that question.",
-      referenced: false,
-    };
-  }
-
-  return {
-    text: matches
-      .slice(0, 2)
-      .map((source) => source.text)
-      .join(" "),
-    referenced: true,
-  };
-}
-
-function getAiAnswer() {
-  return {
-    text:
-      "Your question has been recorded for the general AI assistant. " +
-      "A connected AI service is required to generate a response.",
-    referenced: false,
-  };
-}
+import { apiClient } from "../../api/client";
 
 export default function StudentQA() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthContext();
-  const storedUsername = localStorage.getItem("username");
-  const currentUser =
-    user || users.find((item) => item.username === storedUsername) || null;
+
+  const [lecture, setLecture] = useState(null);
+  const [doubts, setDoubts] = useState([]);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [question, setQuestion] = useState("");
+  const [mode, setMode] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [errorStatus, setErrorStatus] = useState(null);
 
   /* =========================================================
-     SELECT THE EXACT LECTURE
+     FETCH LECTURE & DOUBTS FROM BACKEND
   ========================================================= */
 
-  const lecture = lectures.find(
-    (item) => String(item.id) === String(lectureId),
-  );
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
 
-  /*
-   * Load content ONLY for the selected lecture.
-   *
-   * No fallback to lecture-04 or any other lecture.
-   */
-  const selectedLectureData = lecture ? lectureData[lecture.dataId] : null;
+      const [lecData, doubtsDataRes] = await Promise.all([
+        apiClient.get(`/lectures/${lectureId}`),
+        apiClient.get(`/lectures/${lectureId}/doubts`),
+      ]);
 
-  /*
-   * Students should only access Ask for published lectures.
-   */
-  const isPublished = lecture?.broadcastStatus === "Broadcast";
-
-  /* =========================================================
-     EXISTING LECTURE-SPECIFIC DOUBTS
-  ========================================================= */
-
-  const existingDoubts = useMemo(() => {
-    if (!lecture) {
-      return [];
+      setLecture(lecData);
+      setDoubts(Array.isArray(doubtsDataRes) ? doubtsDataRes : []);
+    } catch (err) {
+      console.error("Failed to load lecture or doubts for QA:", err);
+      setErrorStatus(err?.status || 500);
+      setError(err?.message || "Failed to load lecture Q&A.");
+      setLecture(null);
+      setDoubts([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return getDoubtsByLecture(lecture.id);
-  }, [lecture]);
+  useEffect(() => {
+    if (lectureId) {
+      fetchData();
+    }
+  }, [lectureId]);
 
   /* =========================================================
-     CHAT MESSAGES
+     ASK LECTURER MESSAGES
   ========================================================= */
 
-  const initialMessages = useMemo(() => {
+  const lecturerMessages = useMemo(() => {
     if (!lecture) {
       return [];
     }
 
     const messages = [
       {
-        id: "welcome",
+        id: "welcome-lecturer",
         type: "ai",
-        text: `Hello! I'm ready to answer questions about ${lecture.title}. What would you like to know?`,
+        text: `Hello! I am ready to record your questions for the lecturer of "${lecture.title}". What would you like to ask?`,
         referenced: false,
       },
     ];
 
-    existingDoubts.forEach((doubt) => {
+    doubts.forEach((doubt) => {
       messages.push({
         id: `${doubt.id}-question`,
         type: "user",
@@ -204,170 +84,142 @@ export default function StudentQA() {
           type: "ai",
           text: doubt.answer,
           referenced: true,
-          answeredBy: doubt.answeredBy || "",
-          answeredAt: doubt.answeredAt || "",
+          answeredBy: doubt.answered_by ? `Faculty #${doubt.answered_by}` : "Faculty",
+          answeredAt: doubt.answered_at
+            ? new Date(doubt.answered_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : "",
+        });
+      } else {
+        messages.push({
+          id: `${doubt.id}-pending`,
+          type: "ai",
+          text: "Your doubt has been sent to the faculty for this lecture.",
+          referenced: false,
         });
       }
     });
 
     return messages;
-  }, [lecture, existingDoubts]);
-
-  const [question, setQuestion] = useState("");
-  const [mode, setMode] = useState(null);
-
-  const [messages, setMessages] = useState(initialMessages);
-
-  useEffect(() => {
-    setMessages(initialMessages);
-    setQuestion("");
-  }, [initialMessages, mode]);
-
-  const hasUnreadReply = existingDoubts.some(
-    (doubt) =>
-      doubt.studentUnread &&
-      String(doubt.studentId) ===
-        String(currentUser?.id || currentUser?.username || storedUsername),
-  );
-  const [unreadReply, setUnreadReply] = useState(hasUnreadReply);
-
-  useEffect(() => {
-    if (mode !== "lecture" || !currentUser) {
-      return;
-    }
-
-    existingDoubts.forEach((doubt) => {
-      if (
-        doubt.studentUnread &&
-        String(doubt.studentId) ===
-          String(currentUser.id || currentUser.username)
-      ) {
-        updateDoubt(doubt.id, { studentUnread: false });
-      }
-    });
-
-    if (hasUnreadReply) {
-      setUnreadReply(false);
-    }
-  }, [existingDoubts, hasUnreadReply, mode, currentUser]);
+  }, [lecture, doubts]);
 
   /* =========================================================
-     ASK QUESTION
+     ASK AI MESSAGES INITIALIZATION
   ========================================================= */
 
-  const askQuestion = () => {
-    const cleanedQuestion = question.trim();
-
-    if (!cleanedQuestion) {
-      return;
-    }
-
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      type: "user",
-      text: cleanedQuestion,
-      referenced: false,
-    };
-
-    if (mode === "lecture") {
-      const savedDoubt = addDoubt({
-        subjectId: lecture.subjectId,
-        lectureId: lecture.id,
-        studentId:
-          currentUser?.id ||
-          currentUser?.username ||
-          storedUsername ||
-          "student",
-        studentName:
-          currentUser?.name ||
-          currentUser?.username ||
-          storedUsername ||
-          "Student",
-        usn: currentUser?.usn || currentUser?.username || storedUsername || "",
-        question: cleanedQuestion,
-        createdAt: new Date().toLocaleString(),
-        status: "pending",
-        answer: "",
-        answeredBy: "",
-        answeredAt: "",
-        studentUnread: false,
-      });
-
-      setMessages((previous) => [
-        ...previous,
-        userMessage,
+  useEffect(() => {
+    if (lecture && aiMessages.length === 0) {
+      setAiMessages([
         {
-          id: `${savedDoubt.id}-pending`,
+          id: "welcome-ai",
           type: "ai",
-          text: "Your doubt has been sent to the faculty for this lecture.",
+          text: `Hello! I'm ready to answer questions about ${lecture.title}. What would you like to know?`,
           referenced: false,
         },
       ]);
-    } else {
-      setMessages((previous) => [
-        ...previous,
-        userMessage,
-        {
-          id: `ai-${Date.now()}`,
-          type: "ai",
-          ...getAiAnswer(cleanedQuestion),
-        },
-      ]);
+    }
+  }, [lecture, aiMessages.length]);
+
+  const activeMessages = mode === "lecture" ? lecturerMessages : aiMessages;
+
+  /* =========================================================
+     SUBMIT QUESTION
+  ========================================================= */
+
+  const askQuestion = async () => {
+    const cleanedQuestion = question.trim();
+
+    if (!cleanedQuestion || submitting) {
+      return;
     }
 
-    setQuestion("");
+    setSubmitting(true);
+
+    if (mode === "lecture") {
+      try {
+        const createdDoubt = await apiClient.post(`/lectures/${lectureId}/doubts`, {
+          question: cleanedQuestion,
+        });
+        setDoubts((previous) => [...previous, createdDoubt]);
+        setQuestion("");
+      } catch (err) {
+        console.error("Failed to submit doubt:", err);
+        alert(err?.message || "Failed to submit doubt to faculty.");
+      } finally {
+        setSubmitting(false);
+      }
+    } else if (mode === "ai") {
+      const userMessage = {
+        id: `user-${Date.now()}`,
+        type: "user",
+        text: cleanedQuestion,
+        referenced: false,
+      };
+
+      setAiMessages((previous) => [...previous, userMessage]);
+      setQuestion("");
+
+      try {
+        const response = await apiClient.post(`/lectures/${lectureId}/ask-ai`, {
+          question: cleanedQuestion,
+        });
+
+        const aiAnswerMessage = {
+          id: `ai-${Date.now()}`,
+          type: "ai",
+          text: response.answer,
+          referenced: true,
+        };
+
+        setAiMessages((previous) => [...previous, aiAnswerMessage]);
+      } catch (err) {
+        console.error("Ask AI failed:", err);
+        let errorText = err?.message || "Failed to get AI answer. Please try again.";
+
+        if (err?.status === 409) {
+          errorText =
+            "AI answers are not available yet because this lecture transcript is still being processed.";
+        }
+
+        const errorMessage = {
+          id: `ai-err-${Date.now()}`,
+          type: "ai",
+          text: errorText,
+          referenced: false,
+          isError: true,
+        };
+
+        setAiMessages((previous) => [...previous, errorMessage]);
+      } finally {
+        setSubmitting(false);
+      }
+    }
   };
 
   /* =========================================================
-     VALIDATION
+     VALIDATION & LOADING STATES
   ========================================================= */
 
-  if (!lecture) {
+  if (loading) {
     return (
       <div className="page student-page">
-        <div
-          className="card student-resource-empty"
-          style={{
-            marginTop: 20,
-          }}
-        >
-          <h3>Lecture not found</h3>
-
-          <p>The requested lecture does not exist.</p>
+        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+          <RefreshCw size={32} className="animate-spin" />
+          <p style={{ marginTop: 12 }}>Loading Q&A...</p>
         </div>
       </div>
     );
   }
 
-  if (!isPublished) {
+  if (errorStatus === 403 || errorStatus === 404 || !lecture) {
     return (
       <div className="page student-page">
-        <div
-          className="card student-resource-empty"
-          style={{
-            marginTop: 20,
-          }}
-        >
-          <h3>Lecture not available</h3>
-
-          <p>This lecture has not been published to students yet.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!selectedLectureData) {
-    return (
-      <div className="page student-page">
-        <div
-          className="card student-resource-empty"
-          style={{
-            marginTop: 20,
-          }}
-        >
-          <h3>Ask unavailable</h3>
-
-          <p>Published lecture content could not be found for this lecture.</p>
+        <div className="card student-resource-empty" style={{ marginTop: 20 }}>
+          <h3>{errorStatus === 403 ? "Lecture Access Restricted" : "Lecture Not Found"}</h3>
+          <p>{error || "The requested lecture Q&A is not accessible."}</p>
         </div>
       </div>
     );
@@ -448,7 +300,7 @@ export default function StudentQA() {
             letterSpacing: "0.08em",
           }}
         >
-          {lecture.subjectCode}
+          {lecture.subject_id ? `Subject #${lecture.subject_id}` : "LECTURE Q&A"}
         </p>
 
         <h1
@@ -527,19 +379,6 @@ export default function StudentQA() {
                 marginTop: 22,
               }}
             >
-              {unreadReply && (
-                <p
-                  style={{
-                    margin: "0 0 14px",
-                    color: "#18794e",
-                    fontSize: 12,
-                    fontWeight: 600,
-                  }}
-                >
-                  New reply
-                </p>
-              )}
-
               <button
                 type="button"
                 className="primary-action-button"
@@ -559,7 +398,7 @@ export default function StudentQA() {
                   color: "#53657d",
                 }}
               >
-                Ask Lecture
+                Ask Lecturer
               </button>
             </div>
           </div>
@@ -581,7 +420,7 @@ export default function StudentQA() {
                   fontWeight: 600,
                 }}
               >
-                Mode: {mode === "lecture" ? "Ask Lecture" : "Ask AI"}
+                Mode: {mode === "lecture" ? "Ask Lecturer" : "Ask AI"}
               </span>
 
               <button
@@ -606,7 +445,7 @@ export default function StudentQA() {
                 minHeight: 294,
               }}
             >
-              {messages.map((message) => (
+              {activeMessages.map((message) => (
                 <div
                   key={message.id}
                   style={{
@@ -624,10 +463,20 @@ export default function StudentQA() {
                           ? "14px 14px 4px 14px"
                           : "14px 14px 14px 4px",
                       background:
-                        message.type === "user" ? "#2f76d2" : "#eef2f7",
-                      color: message.type === "user" ? "#ffffff" : "#334155",
+                        message.type === "user"
+                          ? "#2f76d2"
+                          : message.isError
+                          ? "#fef2f2"
+                          : "#eef2f7",
+                      color:
+                        message.type === "user"
+                          ? "#ffffff"
+                          : message.isError
+                          ? "#991b1b"
+                          : "#334155",
                       fontSize: 14,
                       lineHeight: 1.7,
+                      border: message.isError ? "1px solid #fecaca" : "none",
                     }}
                   >
                     <p style={{ margin: 0 }}>{message.text}</p>
@@ -644,9 +493,7 @@ export default function StudentQA() {
                         Referenced from this lecture
                         {message.answeredBy
                           ? ` • Answered by ${message.answeredBy}${
-                              message.answeredAt
-                                ? ` • ${message.answeredAt}`
-                                : ""
+                              message.answeredAt ? ` • ${message.answeredAt}` : ""
                             }`
                           : ""}
                       </small>
@@ -669,13 +516,18 @@ export default function StudentQA() {
               <input
                 type="text"
                 value={question}
+                disabled={submitting}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     askQuestion();
                   }
                 }}
-                placeholder="Ask a question about this lecture..."
+                placeholder={
+                  mode === "lecture"
+                    ? "Ask a doubt to your lecturer..."
+                    : "Ask AI about this lecture..."
+                }
                 style={{
                   flex: 1,
                   minHeight: 44,
@@ -692,7 +544,7 @@ export default function StudentQA() {
               <button
                 type="button"
                 onClick={askQuestion}
-                disabled={!question.trim()}
+                disabled={!question.trim() || submitting}
                 style={{
                   minWidth: 76,
                   minHeight: 44,
@@ -703,11 +555,11 @@ export default function StudentQA() {
                   color: "#ffffff",
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: question.trim() ? "pointer" : "not-allowed",
-                  opacity: question.trim() ? 1 : 0.55,
+                  cursor: question.trim() && !submitting ? "pointer" : "not-allowed",
+                  opacity: question.trim() && !submitting ? 1 : 0.55,
                 }}
               >
-                Ask
+                {submitting ? "Sending..." : "Ask"}
               </button>
             </div>
           </>

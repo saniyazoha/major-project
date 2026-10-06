@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # JWT Settings
     SECRET_KEY: str = "sabha-secret-key-phase1-backend-dev-mode-32bytes"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days (10,080 minutes)
 
     # Supabase Storage Settings
     SUPABASE_URL: str = ""

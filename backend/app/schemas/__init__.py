@@ -24,6 +24,7 @@ from app.schemas.quiz_attempt import (
     FacultyQuizPerformanceResponse,
     MostMissedQuestion,
     StudentQuizStatsResponse,
+    FacultyStudentProgressItem,
 )
 
 __all__ = [
@@ -50,4 +51,5 @@ __all__ = [
     "FacultyQuizPerformanceResponse",
     "MostMissedQuestion",
     "StudentQuizStatsResponse",
+    "FacultyStudentProgressItem",
 ]

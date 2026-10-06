@@ -151,3 +151,198 @@ def test_role_separation_student_login_with_faculty_creds(auth_client):
     )
     assert response.status_code == 401
     assert "Incorrect" in response.json()["detail"]
+
+
+# =========================================================
+# PROFILE & PASSWORD TESTS
+# =========================================================
+
+def test_student_get_profile(auth_client):
+    """Student can retrieve their authenticated profile."""
+    login_res = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "COBOL1959!Key"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.get(
+        "/auth/student/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["name"] == "Grace Hopper"
+    assert data["username"] == "ghopper"
+    assert data["role"] == "student"
+    assert data["rollno"] == "CS2026-02"
+
+
+def test_student_update_profile(auth_client):
+    """Student can update their name and email."""
+    login_res = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "COBOL1959!Key"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.patch(
+        "/auth/student/me",
+        json={"name": "Rear Admiral Grace Hopper", "email": "grace@navy.mil"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["name"] == "Rear Admiral Grace Hopper"
+    assert data["email"] == "grace@navy.mil"
+
+    # Verify email is returned in profile GET
+    get_res = auth_client.get(
+        "/auth/student/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert get_res.json()["email"] == "grace@navy.mil"
+
+
+def test_faculty_update_profile(auth_client):
+    """Faculty can update their name and email."""
+    login_res = auth_client.post(
+        "/auth/faculty/login",
+        json={"username": "babbage", "password": "DifferenceEngine!1"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.patch(
+        "/auth/faculty/me",
+        json={"name": "Sir Charles Babbage", "email": "charles@cambridge.ac.uk"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["name"] == "Sir Charles Babbage"
+    assert data["email"] == "charles@cambridge.ac.uk"
+
+
+def test_unauthenticated_profile_update_rejected(auth_client):
+    """Unauthenticated profile update is rejected with 401."""
+    res = auth_client.patch("/auth/student/me", json={"name": "Attacker"})
+    assert res.status_code == 401
+
+
+def test_student_cannot_access_faculty_profile_endpoint(auth_client):
+    """Student token rejected on faculty profile endpoint."""
+    login_res = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "COBOL1959!Key"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.patch(
+        "/auth/faculty/me",
+        json={"name": "Hacker"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 403
+
+
+def test_student_change_password_success_and_login_with_new_password(auth_client):
+    """Student can change password with valid current password and use new password to log in."""
+    login_res = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "COBOL1959!Key"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.post(
+        "/auth/student/change-password",
+        json={"current_password": "COBOL1959!Key", "new_password": "BrandNewPassword123!"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 200
+    assert res.json()["message"] == "Password changed successfully"
+
+    # Old password fails
+    old_login = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "COBOL1959!Key"}
+    )
+    assert old_login.status_code == 401
+
+    # New password succeeds
+    new_login = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "BrandNewPassword123!"}
+    )
+    assert new_login.status_code == 200
+
+
+def test_student_change_password_wrong_current_password_fails(auth_client):
+    """Student cannot change password with incorrect current password."""
+    login_res = auth_client.post(
+        "/auth/student/login",
+        json={"roll_no": "CS2026-02", "password": "COBOL1959!Key"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.post(
+        "/auth/student/change-password",
+        json={"current_password": "WrongPassword", "new_password": "NewSecretPassword"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 400
+    assert "Incorrect current password" in res.json()["detail"]
+
+
+def test_faculty_change_password_success(auth_client):
+    """Faculty can change password and log in with new password."""
+    login_res = auth_client.post(
+        "/auth/faculty/login",
+        json={"username": "babbage", "password": "DifferenceEngine!1"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.post(
+        "/auth/faculty/change-password",
+        json={"current_password": "DifferenceEngine!1", "new_password": "AnalyticalEngine!2"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 200
+
+    # Old password fails
+    old_login = auth_client.post(
+        "/auth/faculty/login",
+        json={"username": "babbage", "password": "DifferenceEngine!1"}
+    )
+    assert old_login.status_code == 401
+
+    # New password succeeds
+    new_login = auth_client.post(
+        "/auth/faculty/login",
+        json={"username": "babbage", "password": "AnalyticalEngine!2"}
+    )
+    assert new_login.status_code == 200
+
+
+def test_faculty_change_password_wrong_current_password_fails(auth_client):
+    """Faculty cannot change password with wrong current password."""
+    login_res = auth_client.post(
+        "/auth/faculty/login",
+        json={"username": "babbage", "password": "DifferenceEngine!1"}
+    )
+    token = login_res.json()["access_token"]
+
+    res = auth_client.post(
+        "/auth/faculty/change-password",
+        json={"current_password": "WrongPass", "new_password": "AnalyticalEngine!2"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 400
+    assert "Incorrect current password" in res.json()["detail"]
+
+
+def test_unauthenticated_password_change_rejected(auth_client):
+    """Unauthenticated password change request is rejected."""
+    res = auth_client.post(
+        "/auth/student/change-password",
+        json={"current_password": "COBOL1959!Key", "new_password": "NewSecretPassword"}
+    )
+    assert res.status_code == 401

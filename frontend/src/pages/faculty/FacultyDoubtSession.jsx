@@ -1,25 +1,91 @@
-import { ArrowLeft, CircleHelp } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowLeft, CircleHelp, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { lectures } from "../../data/lectures";
-import { getDoubtsByLecture } from "../../data/doubtsData";
+import { apiClient } from "../../api/client";
 
 export default function FacultyDoubtSession() {
   const navigate = useNavigate();
   const { lectureId } = useParams();
 
-  const lecture = useMemo(
-    () => lectures.find((item) => String(item.id) === String(lectureId)),
-    [lectureId],
-  );
-  const doubts = lecture ? getDoubtsByLecture(lecture.id) : [];
+  const [lecture, setLecture] = useState(null);
+  const [doubts, setDoubts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [errorStatus, setErrorStatus] = useState(null);
 
-  if (!lecture) {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
+
+      const [lecData, doubtsRes] = await Promise.all([
+        apiClient.get(`/lectures/${lectureId}`),
+        apiClient.get(`/lectures/${lectureId}/doubts`),
+      ]);
+
+      setLecture(lecData);
+      setDoubts(Array.isArray(doubtsRes) ? doubtsRes : []);
+    } catch (err) {
+      console.error("Failed to load faculty doubt session:", err);
+      setErrorStatus(err?.status || 500);
+      setError(err?.message || "Failed to load doubt session.");
+      setLecture(null);
+      setDoubts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (lectureId) {
+      fetchData();
+    }
+  }, [lectureId]);
+
+  const formatDate = (isoString) => {
+    if (!isoString) return "";
+    try {
+      return new Date(isoString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  if (loading) {
     return (
       <div className="page">
-        <div className="card" style={{ padding: 30 }}>
-          <h2>Lecture not found</h2>
+        <div className="card" style={{ padding: 30, textAlign: "center" }}>
+          <RefreshCw size={28} className="animate-spin" style={{ margin: "0 auto 12px" }} />
+          <p style={{ margin: 0, color: "#667085" }}>Loading doubt session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorStatus === 403 || errorStatus === 404 || !lecture) {
+    return (
+      <div className="page">
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate("/faculty/subjects")}
+        >
+          <ArrowLeft size={16} />
+          Back to Subjects
+        </button>
+        <div className="card" style={{ marginTop: 20, padding: 30 }}>
+          <h2>{errorStatus === 403 ? "Access Denied" : "Lecture Not Found"}</h2>
+          <p style={{ marginTop: 8, color: "#667085" }}>
+            {error || "The requested doubt session is not accessible."}
+          </p>
         </div>
       </div>
     );
@@ -85,7 +151,7 @@ export default function FacultyDoubtSession() {
             >
               <span>
                 <strong style={{ display: "block", color: "#172b4d" }}>
-                  {doubt.studentName || "Student"}
+                  {doubt.studentName || (doubt.student_id ? `Student #${doubt.student_id}` : "Student")}
                 </strong>
                 <span
                   style={{
@@ -95,7 +161,7 @@ export default function FacultyDoubtSession() {
                     fontSize: 12,
                   }}
                 >
-                  USN: {doubt.usn || "Not available"}
+                  USN: {doubt.usn || (doubt.student_id ? `STU-${doubt.student_id}` : "Not available")}
                 </span>
                 <span
                   style={{
@@ -117,7 +183,7 @@ export default function FacultyDoubtSession() {
                     fontSize: 11,
                   }}
                 >
-                  {doubt.createdAt}
+                  {formatDate(doubt.created_at)}
                 </span>
               </span>
 

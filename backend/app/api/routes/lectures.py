@@ -8,7 +8,7 @@ from app.db.session import get_db
 from app.api.dependencies import get_current_user, require_faculty, require_student
 from app.schemas.lecture import LectureResponse
 from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
-from app.schemas.generation import NoteResponse, FlashcardResponse, QuizResponse, GlossaryResponse
+from app.schemas.generation import NoteResponse, FlashcardResponse, QuizResponse, GlossaryResponse, AskAIRequest, AskAIResponse
 from app.schemas.analytics import LectureAnalyticsResponse
 from app.schemas.quiz_attempt import (
     QuizAttemptCreate,
@@ -16,7 +16,6 @@ from app.schemas.quiz_attempt import (
     StudentQuizResult,
     FacultyQuizPerformanceResponse,
     MostMissedQuestion,
-    StudentQuizStatsResponse,
 )
 from app.models.lecture import Lecture
 from app.models.transcript import Transcript
@@ -751,32 +750,49 @@ def get_faculty_quiz_performance(
 
 
 
-@router.get(
-    "/student/quiz-stats",
-    response_model=StudentQuizStatsResponse,
-    status_code=status.HTTP_200_OK,
-)
-def get_student_quiz_stats(
+@router.post("/{lecture_id}/ask-ai", response_model=AskAIResponse, status_code=status.HTTP_200_OK)
+def ask_ai_about_lecture(
+    lecture_id: int,
+    payload: AskAIRequest,
     db: Session = Depends(get_db),
     current_student: dict = Depends(require_student),
 ):
-    """Retrieve aggregate quiz stats for the authenticated student."""
-    student_id = current_student["user_id"]
-    attempts = db.query(QuizAttempt).filter(QuizAttempt.student_id == student_id).all()
-
-    total_attempts = len(attempts)
-    if total_attempts == 0:
-        return StudentQuizStatsResponse(
-            student_id=student_id,
-            average_score=None,
-            total_attempts=0,
+    """Student endpoint to ask AI a question grounded in lecture transcript content."""
+    if not payload.question or not payload.question.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question text cannot be empty",
         )
 
-    correct_count = sum(1 for a in attempts if a.score == 1)
-    average_score = round((correct_count / total_attempts) * 100.0, 2)
-
-    return StudentQuizStatsResponse(
-        student_id=student_id,
-        average_score=average_score,
-        total_attempts=total_attempts,
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_student["user_id"],
+        role="student",
     )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lecture not found",
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied for this lecture",
+        )
+
+    transcript = db.query(Transcript).filter(Transcript.lecture_id == lecture_id).first()
+    if not transcript or transcript.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Transcript is missing or not completed for this lecture",
+        )
+
+    try:
+        answer = generation_service.ask_ai_about_lecture(transcript, payload.question)
+        return AskAIResponse(answer=answer)
+    except generation_service.GenerationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"LLM generation failed: {str(e)}",
+        )

@@ -10,17 +10,21 @@ import {
   Sun,
   User,
 } from "lucide-react";
+import { useAuthContext } from "../../context/AuthContext";
+import { apiClient } from "../../api/client";
 
 const THEME_STORAGE_KEY = "lectai-theme";
 
 export default function FacultySettings() {
+  const { user, updateUser } = useAuthContext();
+
   /* =====================================================
      PROFILE STATE
   ===================================================== */
 
-  const [name, setName] = useState("Faculty Member");
+  const [name, setName] = useState(user?.name || "Faculty Member");
 
-  const [email, setEmail] = useState("faculty@example.com");
+  const [email, setEmail] = useState(user?.email || "faculty@example.com");
 
   /* =====================================================
      NOTIFICATION STATE
@@ -37,6 +41,37 @@ export default function FacultySettings() {
   const [newPassword, setNewPassword] = useState("");
 
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  /* =====================================================
+     STATUS & LOADING STATE
+  ===================================================== */
+
+  const [profileStatus, setProfileStatus] = useState(null);
+  const [passwordStatus, setPasswordStatus] = useState(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  /* =====================================================
+     FETCH PROFILE
+  ===================================================== */
+
+  useEffect(() => {
+    let isMounted = true;
+    apiClient
+      .get("/auth/faculty/me")
+      .then((data) => {
+        if (isMounted && data) {
+          setName(data.name || "");
+          setEmail(data.email || "");
+        }
+      })
+      .catch(() => {
+        // preserve fallback
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   /* =====================================================
      THEME STATE
@@ -71,34 +106,98 @@ export default function FacultySettings() {
      PROFILE SAVE
   ===================================================== */
 
-  const handleProfileSave = (event) => {
+  const handleProfileSave = async (event) => {
     event.preventDefault();
+    setProfileStatus(null);
 
-    alert("Profile settings saved successfully.");
+    if (!name.trim()) {
+      setProfileStatus({ type: "error", text: "Name cannot be empty." });
+      return;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+      const updated = await apiClient.patch("/auth/faculty/me", {
+        name: name.trim(),
+        email: email.trim() || null,
+      });
+
+      setName(updated.name || "");
+      setEmail(updated.email || "");
+      if (updateUser) {
+        updateUser({ name: updated.name, email: updated.email });
+      }
+      setProfileStatus({
+        type: "success",
+        text: "Profile settings saved successfully.",
+      });
+    } catch (err) {
+      setProfileStatus({
+        type: "error",
+        text: err?.message || "Failed to update profile settings.",
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   /* =====================================================
      PASSWORD CHANGE
   ===================================================== */
 
-  const handlePasswordChange = (event) => {
+  const handlePasswordChange = async (event) => {
     event.preventDefault();
+    setPasswordStatus(null);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.");
+      setPasswordStatus({
+        type: "error",
+        text: "Please fill in all password fields.",
+      });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert("New password and confirm password do not match.");
+      setPasswordStatus({
+        type: "error",
+        text: "New password and confirm password do not match.",
+      });
       return;
     }
 
-    alert("Password changed successfully.");
+    if (newPassword.length < 6) {
+      setPasswordStatus({
+        type: "error",
+        text: "New password must be at least 6 characters long.",
+      });
+      return;
+    }
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    setIsChangingPassword(true);
+
+    try {
+      await apiClient.post("/auth/faculty/change-password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+
+      setPasswordStatus({
+        type: "success",
+        text: "Password changed successfully.",
+      });
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setPasswordStatus({
+        type: "error",
+        text: err?.message || "Failed to change password.",
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   /* =====================================================
@@ -207,6 +306,28 @@ export default function FacultySettings() {
                 gap: 17,
               }}
             >
+              {profileStatus && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    background:
+                      profileStatus.type === "error"
+                        ? "rgba(239, 68, 68, 0.1)"
+                        : "rgba(34, 197, 94, 0.1)",
+                    color: profileStatus.type === "error" ? "#dc2626" : "#16a34a",
+                    border: `1px solid ${
+                      profileStatus.type === "error"
+                        ? "rgba(239, 68, 68, 0.2)"
+                        : "rgba(34, 197, 94, 0.2)"
+                    }`,
+                  }}
+                >
+                  {profileStatus.text}
+                </div>
+              )}
+
               {/* Full Name */}
 
               <div className="upload-form-field">
@@ -278,12 +399,13 @@ export default function FacultySettings() {
               <button
                 type="submit"
                 className="primary-action-button"
+                disabled={isSavingProfile}
                 style={{
                   width: "fit-content",
                 }}
               >
                 <Save size={16} />
-                Save Profile
+                {isSavingProfile ? "Saving..." : "Save Profile"}
               </button>
             </div>
           </form>
@@ -646,6 +768,28 @@ export default function FacultySettings() {
                 gap: 16,
               }}
             >
+              {passwordStatus && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    background:
+                      passwordStatus.type === "error"
+                        ? "rgba(239, 68, 68, 0.1)"
+                        : "rgba(34, 197, 94, 0.1)",
+                    color: passwordStatus.type === "error" ? "#dc2626" : "#16a34a",
+                    border: `1px solid ${
+                      passwordStatus.type === "error"
+                        ? "rgba(239, 68, 68, 0.2)"
+                        : "rgba(34, 197, 94, 0.2)"
+                    }`,
+                  }}
+                >
+                  {passwordStatus.text}
+                </div>
+              )}
+
               {/* Current Password */}
 
               <div className="upload-form-field">
@@ -691,12 +835,13 @@ export default function FacultySettings() {
               <button
                 type="submit"
                 className="primary-action-button"
+                disabled={isChangingPassword}
                 style={{
                   width: "fit-content",
                 }}
               >
                 <Lock size={16} />
-                Change Password
+                {isChangingPassword ? "Changing..." : "Change Password"}
               </button>
             </div>
           </form>

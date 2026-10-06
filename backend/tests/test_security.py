@@ -39,3 +39,14 @@ def test_expired_access_token():
     expired_token = security.create_access_token(data=payload, expires_delta=timedelta(minutes=-10))
     decoded = security.decode_access_token(expired_token)
     assert decoded is None
+
+
+def test_persistent_login_token_expiration():
+    payload = {"sub": "100", "username": "persistent_user", "role": "student"}
+    token = security.create_access_token(data=payload)
+    decoded = security.decode_access_token(token)
+    assert decoded is not None
+    # Verify default expiration is 7 days (604,800 seconds)
+    exp_delta = decoded["exp"] - decoded["iat"]
+    expected_seconds = 7 * 24 * 3600
+    assert abs(exp_delta - expected_seconds) < 10

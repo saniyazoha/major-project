@@ -240,6 +240,63 @@ def call_groq_llm(prompt: str) -> str:
         raise GenerationError(f"Groq LLM completion call failed: {str(e)}") from e
 
 
+def build_ask_ai_prompt(transcript_text: str, question: str) -> str:
+    """Build a structured prompt grounding student Ask AI question strictly in transcript text."""
+    return f"""You are an educational AI assistant helping a student understand a lecture.
+
+LECTURE TRANSCRIPT:
+\"\"\"
+{transcript_text}
+\"\"\"
+
+STUDENT QUESTION:
+\"\"\"
+{question}
+\"\"\"
+
+INSTRUCTIONS:
+1. Answer the student's question accurately using ONLY the information provided in the LECTURE TRANSCRIPT above.
+2. If the question cannot be answered from the transcript, state clearly that the transcript does not contain enough information to answer the question.
+3. Do NOT invent facts or extrapolate beyond what is stated in the transcript.
+4. Output MUST be a single valid JSON object strictly matching the following schema:
+{{
+  "answer": "Your detailed answer here based strictly on the transcript."
+}}
+"""
+
+
+def ask_ai_about_lecture(transcript: Transcript, question: str) -> str:
+    """Ground student question against lecture transcript and query Groq LLM."""
+    source_text = select_source_text(transcript.corrected_text, transcript.raw_text)
+    if source_text is None or not source_text.strip():
+        raise GenerationError("Transcript source text is empty or unavailable")
+
+    prompt = build_ask_ai_prompt(source_text.strip(), question.strip())
+    response_text = call_groq_llm(prompt)
+
+    if not response_text or not response_text.strip():
+        raise GenerationError("LLM returned an empty response")
+
+    cleaned = response_text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+
+    try:
+        data = json.loads(cleaned)
+        if isinstance(data, dict) and "answer" in data and isinstance(data["answer"], str):
+            return data["answer"]
+    except Exception:
+        pass
+
+    return cleaned
+
+
+
 def process_lecture_generation(
     db: Session,
     lecture_id: int,

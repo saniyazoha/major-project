@@ -67,6 +67,19 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateUser = (updates) => {
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+      const updated = { ...prevUser, ...updates };
+      try {
+        localStorage.setItem("lectAIUser", JSON.stringify(updated));
+      } catch (e) {
+        // ignore storage errors
+      }
+      return updated;
+    });
+  };
+
   const logout = () => {
     setUser(null);
     clearAuthToken();
@@ -86,6 +99,7 @@ export function AuthProvider({ children }) {
         user,
         login,
         logout,
+        updateUser,
         isAuthenticated: Boolean(user),
       }}
     >
@@ -93,6 +107,7 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
 
 export function useAuthContext() {
   return useContext(AuthContext);

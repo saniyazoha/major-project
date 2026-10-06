@@ -1,95 +1,32 @@
-import { ArrowLeft, ChevronRight, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Users, RefreshCw, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const students = [
-  {
-    id: 1,
-    usn: "1CS21CS001",
-    name: "Aarav Deshpande",
-    batch: "Batch 2024-A",
-    attendance: 92,
-  },
-  {
-    id: 2,
-    usn: "1CS21CS007",
-    name: "Bhavana Kulkarni",
-    batch: "Batch 2024-A",
-    attendance: 97,
-  },
-  {
-    id: 3,
-    usn: "1CS21CS012",
-    name: "Chetan Rao",
-    batch: "Batch 2024-A",
-    attendance: 78,
-  },
-  {
-    id: 4,
-    usn: "1CS21CS019",
-    name: "Divya Patil",
-    batch: "Batch 2024-A",
-    attendance: 88,
-  },
-  {
-    id: 5,
-    usn: "1CS21CS024",
-    name: "Faizan Ahmed",
-    batch: "Batch 2023-B",
-    attendance: 81,
-  },
-  {
-    id: 6,
-    usn: "1CS21CS031",
-    name: "Gagana Shetty",
-    batch: "Batch 2023-B",
-    attendance: 94,
-  },
-  {
-    id: 7,
-    usn: "1CS21CS038",
-    name: "Harsh Vardhan",
-    batch: "Batch 2024-A",
-    attendance: 69,
-  },
-  {
-    id: 8,
-    usn: "1CS21CS042",
-    name: "Ishita Sharma",
-    batch: "Batch 2024-A",
-    attendance: 91,
-  },
-  {
-    id: 9,
-    usn: "1CS21CS048",
-    name: "Karan Mehta",
-    batch: "Batch 2023-B",
-    attendance: 86,
-  },
-  {
-    id: 10,
-    usn: "1CS21CS053",
-    name: "Lavanya Rao",
-    batch: "Batch 2024-A",
-    attendance: 89,
-  },
-  {
-    id: 11,
-    usn: "1CS21CS057",
-    name: "Manoj Kumar",
-    batch: "Batch 2023-B",
-    attendance: 83,
-  },
-  {
-    id: 12,
-    usn: "1CS21CS061",
-    name: "Nisha Patel",
-    batch: "Batch 2024-A",
-    attendance: 95,
-  },
-];
+import { apiClient } from "../../api/client";
 
 export default function StudentProgress() {
   const navigate = useNavigate();
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchStudentProgress = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await apiClient.get("/faculty/student-progress");
+      const list = Array.isArray(res) ? res : res?.data || [];
+      setStudents(list);
+    } catch (err) {
+      console.error("Failed to load student progress:", err);
+      setError(err?.message || "Failed to load student progress.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudentProgress();
+  }, []);
 
   return (
     <div className="page">
@@ -143,8 +80,7 @@ export default function StudentProgress() {
               fontSize: 16,
             }}
           >
-            Select a USN to view that student's quizzes, attendance and study
-            hours.
+            View student quiz scores and quiz attempt performance across your subjects.
           </p>
         </div>
 
@@ -167,100 +103,166 @@ export default function StudentProgress() {
       </section>
 
       {/* Student List */}
-      <section
-        className="card"
-        style={{
-          marginTop: 32,
-          padding: 0,
-          overflow: "hidden",
-        }}
-      >
-        {students.map((student, index) => (
+      {loading ? (
+        <div
+          className="card"
+          style={{
+            marginTop: 32,
+            padding: 40,
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <RefreshCw size={28} className="animate-spin" style={{ color: "#1f6feb" }} />
+          <p style={{ margin: 0, color: "#68778d" }}>Loading enrolled student progress...</p>
+        </div>
+      ) : error ? (
+        <div
+          className="card"
+          style={{
+            marginTop: 32,
+            padding: 32,
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <AlertCircle size={32} style={{ color: "#e11d48" }} />
+          <p style={{ margin: 0, color: "#68778d" }}>{error}</p>
           <button
-            key={student.id}
             type="button"
-            onClick={() => navigate(`/faculty/student-progress/${student.usn}`)}
-            style={{
-              width: "100%",
-              border: "none",
-              borderBottom:
-                index !== students.length - 1
-                  ? "1px solid var(--border-color)"
-                  : "none",
-              background: "transparent",
-              padding: "22px 24px",
-              display: "grid",
-              gridTemplateColumns: "44px 1fr auto 24px",
-              alignItems: "center",
-              gap: 16,
-              cursor: "pointer",
-              textAlign: "left",
-            }}
+            className="secondary-action-button"
+            onClick={fetchStudentProgress}
           >
-            {/* Row number */}
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: "#eef2f7",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#64748b",
-                fontWeight: 600,
-              }}
-            >
-              {index + 1}
-            </div>
-
-            {/* Student information */}
-            <div
-              style={{
-                minWidth: 0,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#0f274f",
-                }}
-              >
-                {student.usn}
-              </div>
-
-              <div
-                style={{
-                  marginTop: 4,
-                  color: "#627188",
-                  fontSize: 14,
-                }}
-              >
-                {student.name} · {student.batch}
-              </div>
-            </div>
-
-            {/* Attendance */}
-            <div
-              style={{
-                color: "#627188",
-                fontSize: 14,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {student.attendance}% attendance
-            </div>
-
-            <ChevronRight
-              size={20}
-              style={{
-                color: "#6c7c90",
-              }}
-            />
+            <RefreshCw size={15} /> Retry
           </button>
-        ))}
-      </section>
+        </div>
+      ) : students.length === 0 ? (
+        <div
+          className="card"
+          style={{
+            marginTop: 32,
+            padding: 32,
+            textAlign: "center",
+          }}
+        >
+          <Users size={32} style={{ margin: "0 auto 12px", color: "#68778d" }} />
+          <h3 style={{ margin: "0 0 6px", color: "#0f274f", fontSize: 16, fontWeight: 700 }}>
+            No enrolled students found
+          </h3>
+          <p style={{ margin: 0, color: "#68778d", fontSize: 14 }}>
+            Students enrolled in batches belonging to your subjects will appear here.
+          </p>
+        </div>
+      ) : (
+        <section
+          className="card"
+          style={{
+            marginTop: 32,
+            padding: 0,
+            overflow: "hidden",
+          }}
+        >
+          {students.map((student, index) => (
+            <div
+              key={student.student_id}
+              style={{
+                width: "100%",
+                borderBottom:
+                  index !== students.length - 1
+                    ? "1px solid var(--border-color, #e2e8f0)"
+                    : "none",
+                background: "transparent",
+                padding: "22px 24px",
+                display: "grid",
+                gridTemplateColumns: "44px 1fr auto",
+                alignItems: "center",
+                gap: 16,
+                textAlign: "left",
+              }}
+            >
+              {/* Row number */}
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: "#eef2f7",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#64748b",
+                  fontWeight: 600,
+                }}
+              >
+                {index + 1}
+              </div>
+
+              {/* Student information */}
+              <div
+                style={{
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "#0f274f",
+                  }}
+                >
+                  {student.rollno}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 4,
+                    color: "#627188",
+                    fontSize: 14,
+                  }}
+                >
+                  {student.name} · {student.batch_name}
+                </div>
+              </div>
+
+              {/* Quiz Stats */}
+              <div
+                style={{
+                  textAlign: "right",
+                  fontSize: 14,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 700,
+                    color: "#0f274f",
+                  }}
+                >
+                  Avg Score:{" "}
+                  {student.avg_score !== null && student.avg_score !== undefined
+                    ? `${Math.round(student.avg_score)}%`
+                    : "N/A"}
+                </div>
+                <div
+                  style={{
+                    marginTop: 2,
+                    color: "#627188",
+                    fontSize: 12,
+                  }}
+                >
+                  {student.quizzes_attempted} quizzes attempted
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
