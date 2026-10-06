@@ -26,6 +26,11 @@ from app.schemas.quiz_attempt import (
     StudentQuizStatsResponse,
     FacultyStudentProgressItem,
 )
+from app.schemas.flashcard_progress import (
+    FlashcardProgressResponse,
+    FlashcardReviewRequest,
+    FlashcardReviewItemResponse,
+)
 
 __all__ = [
     "LoginRequest",
@@ -52,4 +57,7 @@ __all__ = [
     "MostMissedQuestion",
     "StudentQuizStatsResponse",
     "FacultyStudentProgressItem",
+    "FlashcardProgressResponse",
+    "FlashcardReviewRequest",
+    "FlashcardReviewItemResponse",
 ]

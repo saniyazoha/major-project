@@ -13,6 +13,7 @@ from app.models.glossary import Glossary
 from app.models.lecture_analytics import LectureAnalytics
 from app.models.quiz_attempt import QuizAttempt
 from app.models.doubt import Doubt
+from app.models.flashcard_progress import FlashcardProgress
 
 __all__ = [
     "Base",
@@ -30,4 +31,5 @@ __all__ = [
     "LectureAnalytics",
     "QuizAttempt",
     "Doubt",
+    "FlashcardProgress",
 ]

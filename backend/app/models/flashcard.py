@@ -6,6 +6,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.lecture import Lecture
+    from app.models.flashcard_progress import FlashcardProgress
 
 
 class Flashcard(Base):
@@ -23,3 +24,6 @@ class Flashcard(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     lecture: Mapped["Lecture"] = relationship("Lecture", back_populates="flashcards")
+    progress_records: Mapped[list["FlashcardProgress"]] = relationship(
+        "FlashcardProgress", back_populates="flashcard", cascade="all, delete-orphan"
+    )

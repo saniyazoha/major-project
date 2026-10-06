@@ -10,6 +10,7 @@ from app.schemas.lecture import LectureResponse
 from app.schemas.transcript import TranscriptResponse, TranscriptUpdate
 from app.schemas.generation import NoteResponse, FlashcardResponse, QuizResponse, GlossaryResponse, AskAIRequest, AskAIResponse
 from app.schemas.analytics import LectureAnalyticsResponse
+from app.schemas.flashcard_progress import FlashcardReviewItemResponse
 from app.schemas.quiz_attempt import (
     QuizAttemptCreate,
     QuizAttemptResponse,
@@ -26,7 +27,14 @@ from app.models.glossary import Glossary
 from app.models.lecture_analytics import LectureAnalytics
 from app.models.quiz_attempt import QuizAttempt
 from app.models.student import Student
-from app.services import lecture_service, storage_service, transcript_processing_service, generation_service, analytics_service
+from app.services import (
+    lecture_service,
+    storage_service,
+    transcript_processing_service,
+    generation_service,
+    analytics_service,
+    flashcard_service,
+)
 
 router = APIRouter(prefix="/lectures", tags=["lectures"])
 
@@ -395,6 +403,37 @@ def get_lecture_flashcards(
 
     flashcards = db.query(Flashcard).filter(Flashcard.lecture_id == lecture_id).all()
     return flashcards
+
+
+@router.get(
+    "/{lecture_id}/flashcards/review",
+    response_model=List[FlashcardReviewItemResponse],
+    status_code=status.HTTP_200_OK,
+)
+def get_lecture_flashcards_for_review(
+    lecture_id: int,
+    db: Session = Depends(get_db),
+    current_student: dict = Depends(require_student),
+):
+    """Retrieve flashcards belonging to the lecture, ordered for review (due cards first)."""
+    lecture, error = lecture_service.get_lecture_by_id(
+        db,
+        lecture_id=lecture_id,
+        user_id=current_student["user_id"],
+        role=current_student["role"],
+    )
+    if error == "LECTURE_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found"
+        )
+    if error == "ACCESS_DENIED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied for this lecture"
+        )
+
+    return flashcard_service.get_flashcards_for_review(
+        db, lecture_id=lecture_id, student_id=current_student["user_id"]
+    )
 
 
 @router.get("/{lecture_id}/quizzes", response_model=List[QuizResponse], status_code=status.HTTP_200_OK)

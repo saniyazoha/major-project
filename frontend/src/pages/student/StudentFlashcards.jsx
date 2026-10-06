@@ -15,13 +15,14 @@ export default function StudentFlashcards() {
 
   const [current, setCurrent] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const fetchFlashcards = async () => {
     try {
       setLoading(true);
       setError(null);
       setErrorStatus(null);
-      const data = await apiClient.get(`/lectures/${lectureId}/flashcards`);
+      const data = await apiClient.get(`/lectures/${lectureId}/flashcards/review`);
       const list = Array.isArray(data) ? data : data?.data || [];
       setFlashcards(list);
       setCurrent(0);
@@ -41,6 +42,33 @@ export default function StudentFlashcards() {
       fetchFlashcards();
     }
   }, [lectureId]);
+
+  const handleReview = async (quality) => {
+    const currentCard = flashcards[current];
+    if (!currentCard || reviewing) return;
+
+    try {
+      setReviewing(true);
+      const updatedProgress = await apiClient.post(`/flashcards/${currentCard.id}/review`, { quality });
+
+      setFlashcards((prev) =>
+        prev.map((fc, idx) =>
+          idx === current ? { ...fc, progress: updatedProgress } : fc
+        )
+      );
+
+      if (current < flashcards.length - 1) {
+        setCurrent((prev) => prev + 1);
+        setFlipped(false);
+      } else {
+        setFlipped(true);
+      }
+    } catch (err) {
+      console.error("Failed to record flashcard review:", err);
+    } finally {
+      setReviewing(false);
+    }
+  };
 
   const next = () => {
     if (current < flashcards.length - 1) {
@@ -186,47 +214,174 @@ export default function StudentFlashcards() {
         <>
           {/* FLASHCARD */}
           {flashcards[current] && (
-            <section
-              className="card"
-              onClick={() => setFlipped((value) => !value)}
-              style={{
-                marginTop: 18,
-                minHeight: 285,
-                padding: "36px 30px",
-                borderRadius: 15,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                cursor: "pointer",
-              }}
-            >
-              <div>
-                <h2
-                  style={{
-                    margin: 0,
-                    color: "#0f274f",
-                    fontSize: 23,
-                    lineHeight: 1.5,
-                    fontWeight: 600,
-                  }}
-                >
-                  {flipped ? flashcards[current].answer : flashcards[current].question}
-                </h2>
-
-                {!flipped && (
-                  <p
+            <div>
+              <section
+                className="card"
+                onClick={() => setFlipped((value) => !value)}
+                style={{
+                  marginTop: 18,
+                  minHeight: 285,
+                  padding: "36px 30px",
+                  borderRadius: 15,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  position: "relative",
+                }}
+              >
+                {flashcards[current].progress ? (
+                  <span
                     style={{
-                      margin: "18px 0 0",
-                      color: "#627188",
-                      fontSize: 14,
+                      position: "absolute",
+                      top: 16,
+                      right: 20,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: "3px 9px",
+                      borderRadius: 12,
+                      background: "#e0f2fe",
+                      color: "#0369a1",
                     }}
                   >
-                    Click to reveal answer
-                  </p>
+                    Next Review: {flashcards[current].progress.next_review_date}
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 16,
+                      right: 20,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: "3px 9px",
+                      borderRadius: 12,
+                      background: "#fef3c7",
+                      color: "#92400e",
+                    }}
+                  >
+                    New Card
+                  </span>
                 )}
-              </div>
-            </section>
+
+                <div>
+                  <h2
+                    style={{
+                      margin: 0,
+                      color: "#0f274f",
+                      fontSize: 23,
+                      lineHeight: 1.5,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {flipped ? flashcards[current].answer : flashcards[current].question}
+                  </h2>
+
+                  {!flipped && (
+                    <p
+                      style={{
+                        margin: "18px 0 0",
+                        color: "#627188",
+                        fontSize: 14,
+                      }}
+                    >
+                      Click to reveal answer
+                    </p>
+                  )}
+                </div>
+              </section>
+
+              {/* SM-2 SELF-RATING BUTTONS */}
+              {flipped && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: 12,
+                    marginTop: 16,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReview(1);
+                    }}
+                    disabled={reviewing}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#ef4444",
+                      color: "#ffffff",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Again (1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReview(3);
+                    }}
+                    disabled={reviewing}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#f59e0b",
+                      color: "#ffffff",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Hard (3)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReview(4);
+                    }}
+                    disabled={reviewing}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#2563eb",
+                      color: "#ffffff",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Good (4)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReview(5);
+                    }}
+                    disabled={reviewing}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#10b981",
+                      color: "#ffffff",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Easy (5)
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* NAVIGATION */}
