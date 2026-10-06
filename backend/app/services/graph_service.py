@@ -5,6 +5,7 @@ from app.models.lecture import Lecture
 from app.models.batch import Batch
 from app.models.enrollment import Enrollment
 from app.models.subject_glossary import SubjectGlossary
+from app.models.glossary import Glossary
 from app.models.concept_edge import ConceptEdge
 from app.schemas.graph import KnowledgeGraphResponse, GraphNode, GraphEdge
 
@@ -64,12 +65,19 @@ def get_subject_knowledge_graph(
         .all()
     )
 
-    # Retrieve subject glossary terms
-    db_glossary = (
-        db.query(SubjectGlossary.term)
-        .filter(SubjectGlossary.subject_id == subject_id)
-        .all()
-    )
+    # Retrieve glossary terms (Faculty: subject-level SubjectGlossary; Student: broadcast-lecture Glossary)
+    if role == "faculty":
+        db_glossary = (
+            db.query(SubjectGlossary.term)
+            .filter(SubjectGlossary.subject_id == subject_id)
+            .all()
+        )
+    else:
+        db_glossary = (
+            db.query(Glossary.term)
+            .filter(Glossary.lecture_id.in_(allowed_lecture_ids))
+            .all()
+        )
 
     # Collect nodes (unique terms)
     node_set: Set[str] = {t for (t,) in db_glossary if t and t.strip()}

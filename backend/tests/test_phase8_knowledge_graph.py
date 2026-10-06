@@ -16,6 +16,7 @@ from app.models.enrollment import Enrollment
 from app.models.lecture import Lecture
 from app.models.transcript import Transcript
 from app.models.subject_glossary import SubjectGlossary
+from app.models.glossary import Glossary
 from app.models.concept_edge import ConceptEdge
 from app.core import security
 from app.services import (
@@ -380,3 +381,42 @@ def test_graph_unauthenticated_and_cross_subject_isolation(p8_setup):
     assert d["subject_id"] == sub2.id
     edge_sources = [e["source"] for e in d["edges"]]
     assert "Algorithm" in edge_sources
+
+
+def test_student_graph_nodes_exclude_draft_glossary_terms(p8_setup):
+    """Verify student graph nodes include terms from broadcast lectures but EXCLUDE terms from draft/non-broadcast lectures, while faculty behavior remains unchanged."""
+    client = p8_setup["client"]
+    session = p8_setup["session"]
+    sub1 = p8_setup["sub1"]
+    lec1_bc = p8_setup["lec1_bc"]
+    lec2_draft = p8_setup["lec2_draft"]
+    stu1_token = p8_setup["stu1_token"]
+    fac1_token = p8_setup["fac1_token"]
+
+    # 1. Per-lecture Glossary entries
+    g_bc = Glossary(lecture_id=lec1_bc.id, term="BroadcastGlossaryTerm", definition="Def broadcast")
+    g_draft = Glossary(lecture_id=lec2_draft.id, term="DraftGlossaryTerm", definition="Def draft")
+
+    # 2. Accumulated SubjectGlossary (contains draft term too)
+    sg_draft = SubjectGlossary(subject_id=sub1.id, term="DraftGlossaryTerm", normalized_term="draftglossaryterm", definition="Def draft")
+
+    session.add_all([g_bc, g_draft, sg_draft])
+    session.commit()
+
+    # Student request
+    res_stu = client.get(f"/subjects/{sub1.id}/graph", headers={"Authorization": f"Bearer {stu1_token}"})
+    assert res_stu.status_code == 200
+    stu_nodes = [n["label"] for n in res_stu.json()["nodes"]]
+
+    # Student MUST see broadcast lecture term
+    assert "BroadcastGlossaryTerm" in stu_nodes
+    # Student MUST NOT see draft lecture glossary term!
+    assert "DraftGlossaryTerm" not in stu_nodes
+
+    # Faculty request
+    res_fac = client.get(f"/subjects/{sub1.id}/graph", headers={"Authorization": f"Bearer {fac1_token}"})
+    assert res_fac.status_code == 200
+    fac_nodes = [n["label"] for n in res_fac.json()["nodes"]]
+
+    # Faculty sees full subject-level graph including SubjectGlossary terms
+    assert "DraftGlossaryTerm" in fac_nodes

@@ -111,60 +111,193 @@ function StudentLectureDetails() {
      DOWNLOAD INDIVIDUAL MATERIAL
   ========================================================= */
 
-  const downloadMaterial = (type) => {
+  const downloadMaterial = async (type) => {
     if (!lecture) {
       return;
     }
 
-    const doc = new jsPDF();
-    let y = 20;
+    try {
+      const doc = new jsPDF();
+      let y = 20;
 
-    if (type === "transcript") {
-      y = addPdfTitle(doc, "Transcript");
-      addWrappedText(doc, "No published transcript is available.", 20, y);
+      if (type === "transcript") {
+        const transcript = await apiClient.get(`/lectures/${lectureId}/transcript`).catch(() => null);
+        const text = transcript?.corrected_text || transcript?.raw_text || "No published transcript is available.";
+        y = addPdfTitle(doc, "Transcript");
+        addWrappedText(doc, text, 20, y);
+      } else if (type === "notes") {
+        const note = await apiClient.get(`/lectures/${lectureId}/notes`).catch(() => null);
+        y = addPdfTitle(doc, "Notes & Summary");
+        if (note?.summary_text) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
+          doc.text("Summary:", 20, y);
+          y += 8;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          y = addWrappedText(doc, note.summary_text, 20, y);
+          y += 10;
+        }
+        if (note?.markdown_content) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
+          doc.text("Detailed Notes:", 20, y);
+          y += 8;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          y = addWrappedText(doc, note.markdown_content, 20, y);
+        }
+        if (!note?.summary_text && !note?.markdown_content) {
+          addWrappedText(doc, "No published notes are available.", 20, y);
+        }
+      } else if (type === "flashcards") {
+        const cards = await apiClient.get(`/lectures/${lectureId}/flashcards`).catch(() => []);
+        y = addPdfTitle(doc, "Flashcards");
+        if (Array.isArray(cards) && cards.length > 0) {
+          const cardText = cards.map((c, i) => `Card ${i + 1}:\nQ: ${c.question}\nA: ${c.answer}`).join("\n\n");
+          addWrappedText(doc, cardText, 20, y);
+        } else {
+          addWrappedText(doc, "No published flashcards are available.", 20, y);
+        }
+      } else if (type === "quiz") {
+        const quizzes = await apiClient.get(`/lectures/${lectureId}/quizzes`).catch(() => []);
+        y = addPdfTitle(doc, "Practice Quiz");
+        if (Array.isArray(quizzes) && quizzes.length > 0) {
+          const quizText = quizzes
+            .map((q, i) => {
+              let opts = "";
+              try {
+                const parsed = typeof q.options_json === "string" ? JSON.parse(q.options_json) : q.options_json;
+                if (Array.isArray(parsed)) {
+                  opts = parsed.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}) ${opt}`).join("\n");
+                }
+              } catch {
+                opts = `  Options: ${q.options_json}`;
+              }
+              return `Q${i + 1}: ${q.question}\n${opts}\nCorrect Answer: ${q.correct_answer}${q.explanation ? `\nExplanation: ${q.explanation}` : ""}`;
+            })
+            .join("\n\n");
+          addWrappedText(doc, quizText, 20, y);
+        } else {
+          addWrappedText(doc, "No published quiz is available.", 20, y);
+        }
+      }
+
+      const fileName = sanitizeFileName(lecture.title);
+      doc.save(`${fileName}-${type}.pdf`);
+    } catch (err) {
+      console.error(`Failed to download ${type}:`, err);
     }
-
-    if (type === "notes") {
-      y = addPdfTitle(doc, "Notes");
-      addWrappedText(doc, "No published notes are available.", 20, y);
-    }
-
-    if (type === "flashcards") {
-      y = addPdfTitle(doc, "Flashcards");
-      addWrappedText(doc, "No published flashcards are available.", 20, y);
-    }
-
-    if (type === "quiz") {
-      y = addPdfTitle(doc, "Practice Quiz");
-      addWrappedText(doc, "No published quiz is available.", 20, y);
-    }
-
-    const fileName = sanitizeFileName(lecture.title);
-    doc.save(`${fileName}-${type}.pdf`);
   };
 
   /* =========================================================
      FULL STUDY PACK PDF
   ========================================================= */
 
-  const downloadFullStudyPack = () => {
+  const downloadFullStudyPack = async () => {
     if (!lecture) {
       return;
     }
 
-    const doc = new jsPDF();
-    let y = addPdfTitle(doc, "Full Study Pack");
+    try {
+      const [transcript, note, cards, quizzes, glossary] = await Promise.all([
+        apiClient.get(`/lectures/${lectureId}/transcript`).catch(() => null),
+        apiClient.get(`/lectures/${lectureId}/notes`).catch(() => null),
+        apiClient.get(`/lectures/${lectureId}/flashcards`).catch(() => []),
+        apiClient.get(`/lectures/${lectureId}/quizzes`).catch(() => []),
+        apiClient.get(`/lectures/${lectureId}/glossary`).catch(() => []),
+      ]);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("Study Pack", 20, y);
-    y += 10;
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    addWrappedText(doc, "Published learning material will be available here.", 20, y);
+      const doc = new jsPDF();
+      let y = addPdfTitle(doc, "Full Study Pack");
 
-    const fileName = sanitizeFileName(lecture.title);
-    doc.save(`${fileName}-full-study-pack.pdf`);
+      // Notes & Summary
+      if (note?.summary_text || note?.markdown_content) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("1. Notes & Summary", 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        if (note.summary_text) {
+          y = addWrappedText(doc, `SUMMARY:\n${note.summary_text}`, 20, y);
+          y += 6;
+        }
+        if (note.markdown_content) {
+          y = addWrappedText(doc, `DETAILED NOTES:\n${note.markdown_content}`, 20, y);
+          y += 6;
+        }
+      }
+
+      // Glossary
+      if (Array.isArray(glossary) && glossary.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("2. Glossary", 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const glossText = glossary.map((g) => `• ${g.term}: ${g.definition}`).join("\n");
+        y = addWrappedText(doc, glossText, 20, y);
+        y += 6;
+      }
+
+      // Flashcards
+      if (Array.isArray(cards) && cards.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("3. Flashcards", 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const cardText = cards.map((c, i) => `Q${i + 1}: ${c.question}\nA: ${c.answer}`).join("\n\n");
+        y = addWrappedText(doc, cardText, 20, y);
+        y += 6;
+      }
+
+      // Quiz
+      if (Array.isArray(quizzes) && quizzes.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("4. Practice Quiz", 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const quizText = quizzes
+          .map((q, i) => {
+            let opts = "";
+            try {
+              const parsed = typeof q.options_json === "string" ? JSON.parse(q.options_json) : q.options_json;
+              if (Array.isArray(parsed)) {
+                opts = parsed.map((opt, idx) => `  ${String.fromCharCode(65 + idx)}) ${opt}`).join("\n");
+              }
+            } catch {
+              opts = `  Options: ${q.options_json}`;
+            }
+            return `Q${i + 1}: ${q.question}\n${opts}\nAnswer: ${q.correct_answer}`;
+          })
+          .join("\n\n");
+        y = addWrappedText(doc, quizText, 20, y);
+        y += 6;
+      }
+
+      // Transcript
+      const tText = transcript?.corrected_text || transcript?.raw_text;
+      if (tText) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("5. Transcript", 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        y = addWrappedText(doc, tText, 20, y);
+      }
+
+      const fileName = sanitizeFileName(lecture.title);
+      doc.save(`${fileName}-full-study-pack.pdf`);
+    } catch (err) {
+      console.error("Failed to download full study pack:", err);
+    }
   };
 
   /* =========================================================
