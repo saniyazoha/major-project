@@ -9,7 +9,13 @@ from app.models.note import Note
 from app.models.flashcard import Flashcard
 from app.models.quiz import Quiz
 from app.models.glossary import Glossary
-from app.services import transcription_service, subject_glossary_service, search_service
+from app.models.note_embedding import NoteEmbedding
+from app.services import (
+    transcription_service,
+    subject_glossary_service,
+    search_service,
+    concept_extraction_service,
+)
 from app.core.config import settings
 
 MAX_GENERATION_RETRIES = 3
@@ -369,6 +375,14 @@ def process_lecture_generation(
             all_glossary.extend(parsed_data.get("glossary", []))
 
         # ALL segments succeeded! Perform single atomic DB transaction
+        # Clear pre-existing generated items for repeat generation support
+        db.query(Note).filter(Note.lecture_id == lecture.id).delete(synchronize_session="fetch")
+        db.query(Flashcard).filter(Flashcard.lecture_id == lecture.id).delete(synchronize_session="fetch")
+        db.query(Quiz).filter(Quiz.lecture_id == lecture.id).delete(synchronize_session="fetch")
+        db.query(Glossary).filter(Glossary.lecture_id == lecture.id).delete(synchronize_session="fetch")
+        db.query(NoteEmbedding).filter(NoteEmbedding.lecture_id == lecture.id).delete(synchronize_session="fetch")
+        db.flush()
+
         # Construct single Note row
         combined_notes = "\n\n---\n\n".join(notes_parts) if notes_parts else "No notes generated."
         combined_summary = "\n\n".join(summary_parts) if summary_parts else "No summary generated."
@@ -416,6 +430,11 @@ def process_lecture_generation(
         # 2. Generate Note Embeddings for Semantic Search
         chunks_to_embed = notes_parts if notes_parts else [combined_notes]
         search_service.create_note_embeddings_for_lecture(db, lecture.id, lecture.subject_id, chunks_to_embed)
+
+        # 3. Extract Concept Edges for Knowledge Graph
+        concept_extraction_service.extract_and_save_concept_edges(
+            db, lecture.id, lecture.subject_id, all_glossary, combined_notes
+        )
 
         # Update Lecture status to draft & clear error message
         lecture.status = "draft"

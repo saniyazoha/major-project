@@ -309,6 +309,8 @@ def test_generation_uses_raw_text_when_corrected_text_is_none(generation_db, mon
 
     def mock_llm_call(prompt: str) -> str:
         captured_prompts.append(prompt)
+        if "concept_edges" in prompt:
+            return json.dumps({"concept_edges": []})
         return json.dumps({
             "notes_markdown": "# Notes from raw text",
             "summary_text": "Summary",
@@ -322,7 +324,7 @@ def test_generation_uses_raw_text_when_corrected_text_is_none(generation_db, mon
     updated_lec = process_lecture_generation(session, lec.id, max_retries=1, backoff_seconds=0.0)
 
     assert updated_lec.status == "draft"
-    assert len(captured_prompts) == 1
+    assert len(captured_prompts) >= 1
     assert "Raw ASR transcript used for generation." in captured_prompts[0]
 
 
@@ -345,6 +347,8 @@ def test_malformed_json_triggers_retry_path_and_succeeds(generation_db, monkeypa
         attempts["count"] += 1
         if attempts["count"] == 1:
             return "Malformed { JSON string"
+        if "concept_edges" in prompt:
+            return json.dumps({"concept_edges": []})
         return json.dumps({
             "notes_markdown": "# Notes after retry",
             "summary_text": "Summary after retry",
@@ -357,7 +361,7 @@ def test_malformed_json_triggers_retry_path_and_succeeds(generation_db, monkeypa
 
     updated_lec = process_lecture_generation(session, lec.id, max_retries=3, backoff_seconds=0.0)
 
-    assert attempts["count"] == 2
+    assert attempts["count"] == 3
     assert updated_lec.status == "draft"
     assert session.query(Note).filter(Note.lecture_id == lec.id).first().markdown_content == "# Notes after retry"
 

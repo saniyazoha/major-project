@@ -16,6 +16,7 @@ from app.models.doubt import Doubt
 from app.models.flashcard_progress import FlashcardProgress
 from app.models.subject_glossary import SubjectGlossary
 from app.models.note_embedding import NoteEmbedding
+from app.models.concept_edge import ConceptEdge
 
 __all__ = [
     "Base",
@@ -36,4 +37,5 @@ __all__ = [
     "FlashcardProgress",
     "SubjectGlossary",
     "NoteEmbedding",
+    "ConceptEdge",
 ]

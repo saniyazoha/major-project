@@ -10,7 +10,8 @@ from app.schemas.academic import (
     BatchResponse,
 )
 from app.schemas.search import SearchResponse
-from app.services import academic_service, search_service
+from app.schemas.graph import KnowledgeGraphResponse
+from app.services import academic_service, search_service, graph_service
 
 router = APIRouter(prefix="/subjects", tags=["subjects"])
 
@@ -121,3 +122,30 @@ def search_subject_notes(
         )
 
     return SearchResponse(query=q, subject_id=subject_id, results=results or [])
+
+
+@router.get("/{subject_id}/graph", response_model=KnowledgeGraphResponse, status_code=status.HTTP_200_OK)
+def get_subject_knowledge_graph(
+    subject_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve subject knowledge graph (nodes & concept edges) with role authorization and broadcast filtering."""
+    graph_data, error = graph_service.get_subject_knowledge_graph(
+        db,
+        subject_id=subject_id,
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+    )
+
+    if error == "SUBJECT_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found"
+        )
+    if error in ("NOT_SUBJECT_OWNER", "NOT_ENROLLED"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden for this subject",
+        )
+
+    return graph_data

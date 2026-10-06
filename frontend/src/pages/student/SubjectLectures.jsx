@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { apiClient } from "../../api/client";
+import KnowledgeGraphView from "../../components/knowledge_graph/KnowledgeGraphView";
 
 export default function SubjectLectures() {
   const { subjectId } = useParams();
@@ -286,6 +287,11 @@ export default function SubjectLectures() {
           </div>
         )}
       </section>
+
+      {/* =================================================
+          STUDENT KNOWLEDGE GRAPH SECTION
+      ================================================= */}
+      {batches.length > 0 && <KnowledgeGraphView subjectId={subjectId} />}
     </div>
   );
 }
