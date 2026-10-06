@@ -9,7 +9,7 @@ from app.models.note import Note
 from app.models.flashcard import Flashcard
 from app.models.quiz import Quiz
 from app.models.glossary import Glossary
-from app.services import transcription_service
+from app.services import transcription_service, subject_glossary_service, search_service
 from app.core.config import settings
 
 MAX_GENERATION_RETRIES = 3
@@ -409,6 +409,13 @@ def process_lecture_generation(
                 definition=item["definition"],
             )
             db.add(g_obj)
+
+        # 1. Auto-Glossary Accumulation into subject_glossary
+        subject_glossary_service.upsert_subject_glossary_terms(db, lecture.subject_id, all_glossary)
+
+        # 2. Generate Note Embeddings for Semantic Search
+        chunks_to_embed = notes_parts if notes_parts else [combined_notes]
+        search_service.create_note_embeddings_for_lecture(db, lecture.id, lecture.subject_id, chunks_to_embed)
 
         # Update Lecture status to draft & clear error message
         lecture.status = "draft"

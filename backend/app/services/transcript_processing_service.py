@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.lecture import Lecture
 from app.models.transcript import Transcript
+from app.models.subject_glossary import SubjectGlossary
 from app.services import storage_service, audio_chunking_service, transcription_service
 
 MAX_CHUNK_RETRIES = 3
@@ -52,7 +53,19 @@ def process_lecture_transcription(
             filename=lecture.original_filename
         )
 
-        # Step 3: Process chunks sequentially with controlled retries per chunk
+        # Step 3: Retrieve accumulated subject glossary terms to feed into transcription prompt
+        glossary_terms = (
+            db.query(SubjectGlossary.term)
+            .filter(SubjectGlossary.subject_id == lecture.subject_id)
+            .order_by(SubjectGlossary.id.asc())
+            .all()
+        )
+        prompt = None
+        if glossary_terms:
+            terms_list = [t for (t,) in glossary_terms if t and t.strip()]
+            if terms_list:
+                prompt = "Glossary terms: " + ", ".join(terms_list)
+
         chunk_texts = []
         all_segments = []
 
@@ -62,10 +75,17 @@ def process_lecture_transcription(
 
             for attempt in range(1, max_retries + 1):
                 try:
-                    result = transcription_service.translate_audio_to_english(
-                        audio_file=chunk["file_bytes"],
-                        filename=chunk["filename"]
-                    )
+                    if prompt:
+                        result = transcription_service.translate_audio_to_english(
+                            audio_file=chunk["file_bytes"],
+                            filename=chunk["filename"],
+                            prompt=prompt,
+                        )
+                    else:
+                        result = transcription_service.translate_audio_to_english(
+                            audio_file=chunk["file_bytes"],
+                            filename=chunk["filename"],
+                        )
                     chunk_result = result
                     last_exception = None
                     break  # Translation succeeded, exit retry loop

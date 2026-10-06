@@ -9,7 +9,8 @@ from app.schemas.academic import (
     BatchCreate,
     BatchResponse,
 )
-from app.services import academic_service
+from app.schemas.search import SearchResponse
+from app.services import academic_service, search_service
 
 router = APIRouter(prefix="/subjects", tags=["subjects"])
 
@@ -85,3 +86,38 @@ def get_batches_under_subject(
             status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this subject"
         )
     return batches
+
+
+@router.get("/{subject_id}/search", response_model=SearchResponse, status_code=status.HTTP_200_OK)
+def search_subject_notes(
+    subject_id: int,
+    q: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Subject-scoped semantic search across lecture note embeddings."""
+    if not q or not q.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Query parameter 'q' must be a non-empty string",
+        )
+
+    results, error = search_service.search_subject_notes(
+        db,
+        subject_id=subject_id,
+        query=q,
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+    )
+
+    if error == "SUBJECT_NOT_FOUND":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found"
+        )
+    if error in ("NOT_SUBJECT_OWNER", "NOT_ENROLLED"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden for this subject",
+        )
+
+    return SearchResponse(query=q, subject_id=subject_id, results=results or [])

@@ -14,6 +14,8 @@ from app.models.lecture_analytics import LectureAnalytics
 from app.models.quiz_attempt import QuizAttempt
 from app.models.doubt import Doubt
 from app.models.flashcard_progress import FlashcardProgress
+from app.models.subject_glossary import SubjectGlossary
+from app.models.note_embedding import NoteEmbedding
 
 __all__ = [
     "Base",
@@ -32,4 +34,6 @@ __all__ = [
     "QuizAttempt",
     "Doubt",
     "FlashcardProgress",
+    "SubjectGlossary",
+    "NoteEmbedding",
 ]

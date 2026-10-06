@@ -6,6 +6,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.faculty import Faculty
     from app.models.batch import Batch
+    from app.models.subject_glossary import SubjectGlossary
 
 
 class Subject(Base):
@@ -17,3 +18,6 @@ class Subject(Base):
 
     faculty: Mapped["Faculty"] = relationship("Faculty", back_populates="subjects")
     batches: Mapped[List["Batch"]] = relationship("Batch", back_populates="subject", cascade="all, delete-orphan")
+    subject_glossary_items: Mapped[List["SubjectGlossary"]] = relationship(
+        "SubjectGlossary", back_populates="subject", cascade="all, delete-orphan"
+    )

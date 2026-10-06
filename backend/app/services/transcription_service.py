@@ -21,11 +21,13 @@ def get_groq_client() -> Groq:
 
 def translate_audio_to_english(
     audio_file: Union[str, BinaryIO, bytes],
-    filename: str = "audio.mp3"
+    filename: str = "audio.mp3",
+    prompt: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Translate audio file to English using Groq whisper-large-v3 /audio/translations endpoint.
 
     Requests verbose_json output format to retain timing/segment metadata for downstream analysis.
+    Supports optional vocabulary prompt context.
     Isolates external Groq SDK invocation details.
     """
     client = get_groq_client()
@@ -43,11 +45,15 @@ def translate_audio_to_english(
         else:
             file_tuple = (filename, audio_file)
 
-        response = client.audio.translations.create(
-            file=file_tuple,
-            model="whisper-large-v3",
-            response_format="verbose_json",
-        )
+        api_kwargs = {
+            "file": file_tuple,
+            "model": "whisper-large-v3",
+            "response_format": "verbose_json",
+        }
+        if prompt and prompt.strip():
+            api_kwargs["prompt"] = prompt.strip()
+
+        response = client.audio.translations.create(**api_kwargs)
 
         if hasattr(response, "model_dump"):
             result_data = response.model_dump()
